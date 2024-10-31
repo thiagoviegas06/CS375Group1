@@ -1,4 +1,6 @@
-import { insertToUser } from "./dbConnection.js";
+import { UserTable } from "./tables.js";
 
-const res = await insertToUser("asd", "fgh");
+const table = new UserTable();
+
+const res = await table.insert("asd", "fgh");
 console.log(res);

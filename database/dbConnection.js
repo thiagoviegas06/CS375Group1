@@ -12,12 +12,4 @@ const localPool = new pg.Pool(
     }
 );
 
-const userTable = new UserTable();
-
-const insertToUser = async (firstName, lastName) => {
-    const query = `insert into ${userTable.tableName} (${userTable.firstName}, ${userTable.lastName}) values ($1, $2) returning *;`;
-    const result = await localPool.query(query, [firstName, lastName]);
-    return result.rows;
-}
-
-export { insertToUser };
+export { localPool };
