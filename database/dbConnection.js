@@ -1,6 +1,5 @@
 import pg from 'pg';
-import dbconn from "../env.json" assert {type: 'json'}
-import { UserTable } from './tables.js';
+import dbconn from "../env.json" assert {type: 'json'};
 
 const localPool = new pg.Pool(
     {
