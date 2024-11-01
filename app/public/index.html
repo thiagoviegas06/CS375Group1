@@ -1,18 +1,37 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS375 Group 1 - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login Page</title>
-    </head>
-    <body>
-        <div id = "Login Container">
-            <h2> Login </h2>
-            Username: <input type="text" name="" id="username">
-        </div>
-        <div>
-            Password: <input type="text" name="" id="password">
-        </div>
-    </body>
+    <div class="container">
+        <h1>Welcome to CS375 Group 1</h1>
+        <button class="button" id="login">Log In</button>
+        <button class="button" id="signup">Sign Up</button>
+        <button class="button guest-button" id="guest">Join as Guest</button>
+    </div>
+
+    <script>
+        let login = document.getElementById("login");
+        let signUp = document.getElementById("signup");
+        let guestButton = document.getElementById("guest");
+
+        login.addEventListener("click", () => {
+            window.location.href = 'login.html';
+        });
+
+        signUp.addEventListener("click", () => {
+            window.location.href = 'signup.html';
+        });
+
+        guestButton.addEventListener("click", () => {
+            alert("Doesnt work yet lol");
+        });
+    </script>
+
+</body>
 </html>

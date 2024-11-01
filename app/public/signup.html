@@ -3,18 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign-Up</title>
+    <title>CS375 Group 1 - Sign Up</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Sign Up</h2>
+
+    <div class="container">
+        <h2>Create a New Account</h2>
         <form>
-            <input id="nameField" type="text" placeholder="Username" required>
-            <input id="passField" type="password" placeholder="Password" required>
-            <input id="passField" type="password" placeholder="Confirm Password" required>
-            <button id="sendButton" type="submit">Create Account</button>
+            <input id="username" type="text" placeholder="Username" required>
+            <input id="password" type="password" placeholder="Password" required>
+            <input id="confirmPassword" type="password" placeholder="Confirm Password" required>
+            <button class="button" id="signupButton" type="submit">Sign Up</button>
+            <a href="login.html" class="text-link">Already have an account? Log In</a>
         </form>
     </div>
+
+
+    <script src="signup.js"></script>
 </body>
 </html>
