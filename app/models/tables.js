@@ -1,5 +1,3 @@
-// models/tables.js
-
 const { localPool } = require('./dbConnection.js');
 
 class UserTable {
@@ -10,7 +8,6 @@ class UserTable {
         this.fieldPassword = 'password';
     }
 
-    // Insert a new user into the database
     insert = async (username, password) => {
 
         const query = `
@@ -21,7 +18,7 @@ class UserTable {
         `;
 
         const result = await localPool.query(query, [username, password]);
-        return result.rows[0]; // Return the inserted user
+        return result.rows[0];
     };
 
     // Delete a user by pid
@@ -32,7 +29,7 @@ class UserTable {
             RETURNING *;
         `;
         const result = await localPool.query(query, [pid]);
-        return result.rows[0]; // Return the deleted user
+        return result.rows[0];
     };
 
     // Find a user by username
@@ -42,7 +39,7 @@ class UserTable {
             WHERE ${this.fieldUsername} = $1;
         `;
         const result = await localPool.query(query, [username]);
-        return result.rows[0]; // Return the found user
+        return result.rows[0];
     };
 }
 

@@ -4,17 +4,17 @@ const errorMessage = document.getElementById('errorMessage');
 loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const userField = document.getElementById('nameField').value.trim();
+    const username = document.getElementById('nameField').value.trim();
     const password = document.getElementById('passField').value;
 
     errorMessage.textContent = '';
 
-    if (!userField || !password) {
+    if (!username || !password) {
         errorMessage.textContent = 'Please enter your username and password.';
         return;
     }
 
-    const data = { userField, password };
+    const data = { username, password };
 
     try {
         const response = await fetch('/login', {
