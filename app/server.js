@@ -16,7 +16,6 @@ app.get("/create", (req, res) => {
     res.sendFile(__dirname + "/create.html");
 });
 
-
 // This is the route that will be used to create a new lobby
 // Will require sockets
 app.get("/join:id", (req, res) => {
@@ -29,8 +28,28 @@ app.post("/create", (req, res) => {
     let data = req.body;
 });
 
+app.post("/login", (req, res) => {
+    let data = req.body;
+    let username = data.username;
+    let password = data.password;
+
+    // Connect to the database to check if the user exists
+});
 
 
+app.post("/register", (req, res) => {
+    let data = req.body;
+    let username = data.username;
+    let password = data.password;
+
+    // Connect to the database to check if the user exists
+    // If the user does not exist, add the user to the database
+});
+
+
+app.get("/register", (req, res) => {
+    res.sendFile(__dirname + "/register.html");
+});
 
 
 
