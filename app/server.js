@@ -51,6 +51,43 @@ app.post('/login', async (req, res) => {
   }
 });
 
+
+app.get("/create", (req, res) => {
+  res.sendFile("/create.html");
+});
+
+// This is the route that will be used to create a new lobby
+// Will require sockets
+app.get("/join:id", (req, res) => {
+  res.sendFile("/join.html");
+});
+
+//
+app.post("/create", (req, res) => {
+  let data = req.body;
+
+  // Extract the location and food type from the request body
+  // Will be used with yelp api to get the restaurant list
+  let location = data.location;
+  let foodType = data.foodType;
+
+  // Generate and return the lobby ID
+  let id = generateID();
+  res.json({ id });
+});
+
+
+// Will be used to generate the lobby ID
+// Need to connect with the database to check if the ID is unique
+function generateID() {
+  let id = "";
+  let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 4; i++) {
+      id += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return id;
+}
+
 app.listen(port, () => {
     console.log(`Server running at http://${hostname}:${port}`);
 });
