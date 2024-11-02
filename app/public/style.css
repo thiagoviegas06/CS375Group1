@@ -1,0 +1,137 @@
+/* style.css */
+
+/* Color Variables */
+:root {
+    --primary-color: #3498db;          /* Blue */
+    --primary-color-hover: #2980b9;    /* Darker Blue */
+    --secondary-color: #2ecc71;        /* Green */
+    --secondary-color-hover: #27ae60;  /* Darker Green */
+    --background-color: #ecf0f1;       /* Light Grey */
+    --text-color: #2c3e50;             /* Dark Grey */
+    --error-color: #e74c3c;            /* Red */
+}
+
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* Container */
+.container, .login-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 30px;
+    background-color: #fff;
+    max-width: 400px;
+    margin: auto;
+    margin-top: 50px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Headings */
+h1 {
+    font-size: 32px;
+    margin-bottom: 30px;
+    color: var(--primary-color);
+}
+
+h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+/* Input Fields */
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 8px 0;
+    border: 1px solid #bdc3c7;
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: #fdfdfd;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
+/* Buttons */
+.button {
+    width: 100%;
+    padding: 12px;
+    margin: 15px 0;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.guest-button {
+    background-color: var(--secondary-color);
+}
+
+.guest-button:hover {
+    background-color: var(--secondary-color-hover);
+}
+
+/* Links */
+.text-link {
+    margin-top: 15px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.text-link:hover {
+    text-decoration: underline;
+}
+
+/* Error Message */
+.error-message {
+    color: var(--error-color);
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* Additional Styles */
+.login-container {
+    width: 90%;
+    max-width: 350px;
+    padding: 40px 20px;
+}
+
+@media screen and (max-width: 480px) {
+    .login-container {
+        padding: 30px 15px;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+}

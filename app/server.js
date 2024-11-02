@@ -1,70 +1,56 @@
-let axios = require("axios");
-const express = require("express");
+const express = require('express');
+const axios = require('axios');
 const app = express();
-let apiFile = require("../env.json");
+const { UserTable } = require('./models/tables.js');
+const path = require('path');
 const port = 3000;
-const hostname = "localhost";
+const hostname = 'localhost';
 
-
+app.use(express.static('public'));
 app.use(express.json());
 
-app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/index.html");
+const userTable = new UserTable();  // Table to interact with database
+
+app.get('/', (req, res) => {
+  res.sendFile('index.html');
 });
 
-app.get("/create", (req, res) => {
-    res.sendFile(__dirname + "/create.html");
-});
+app.post('/signup', async (req, res) => {
+  const { username, password } = req.body;
 
-// This is the route that will be used to create a new lobby
-// Will require sockets
-app.get("/join:id", (req, res) => {
-    res.sendFile(__dirname + "/join.html");
-});
+  try {
+    const existingUser = await userTable.findByUsername(username);
 
-
-//
-app.post("/create", (req, res) => {
-    let data = req.body;
-});
-
-app.post("/login", (req, res) => {
-    let data = req.body;
-    let username = data.username;
-    let password = data.password;
-
-    // Connect to the database to check if the user exists
-});
-
-
-app.post("/register", (req, res) => {
-    let data = req.body;
-    let username = data.username;
-    let password = data.password;
-
-    // Connect to the database to check if the user exists
-    // If the user does not exist, add the user to the database
-});
-
-
-app.get("/register", (req, res) => {
-    res.sendFile(__dirname + "/register.html");
-});
-
-
-
-// Will be used to generate the lobby ID
-// Need to connect with the database to check if the ID is unique
-function generateID() {
-    let id = "";
-    let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    for (let i = 0; i < 4; i++) {
-        id += characters.charAt(Math.floor(Math.random() * characters.length));
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Username already exists. Please choose another one.' });
     }
-    return id;
-}
 
+    await userTable.insert(username, password);
+    res.json({ success: true, message: 'User registered successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
-app.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const user = await userTable.findByUsername(username);
+    if (user) {
+      if (password === user.password) {
+        res.json({ success: true, message: 'Login successful' });
+      } else {
+        res.status(401).json({ success: false, message: 'Invalid username or password' });
+      }
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.listen(port, () => {
+    console.log(`Server running at http://${hostname}:${port}`);
 });
