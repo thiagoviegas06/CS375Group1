@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>Demo</title>
+</head>
+<body>
+    <!-- This will conditionally appear if the user is logged in or not -->
+     <div class="login-container">
+      <label for="name">User Name:</label>
+      <input type="text" id="name" name="name"><br><br>
+      <label for="roomCode">Room Code:</label>
+      <input type="text" id="roomCode" name="roomCode"><br><br>
+      <button class="button" id="join">Join chatroom</button>
+    </div>
+    <script>
+    let joinButton = document.getElementById("join");
+    let roomCode = document.getElementById("roomCode");
+    joinButton.addEventListener("click", async () => {
+        // will redirect to new chatroom
+        window.location = `/room/${roomCode.value}`;
+    });
+  </script>
+</body>
+</html>
