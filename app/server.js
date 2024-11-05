@@ -157,6 +157,6 @@ io.on("connection", (socket) => {
   });
 });
 
-app.listen(port, () => {
+server.listen(port, hostname, () => {
     console.log(`Server running at http://${hostname}:${port}`);
 });
