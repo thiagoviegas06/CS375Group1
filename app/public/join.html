@@ -7,21 +7,33 @@
   <title>Demo</title>
 </head>
 <body>
-    <!-- This will conditionally appear if the user is logged in or not -->
-     <div class="login-container">
-      <label for="name">User Name:</label>
-      <input type="text" id="name" name="name"><br><br>
-      <label for="roomCode">Room Code:</label>
-      <input type="text" id="roomCode" name="roomCode"><br><br>
-      <button class="button" id="join">Join chatroom</button>
-    </div>
-    <script>
+  <!-- This will conditionally appear if the user is logged in or not -->
+    <div class="login-container">
+    <label for="name">User Name:</label>
+    <input type="text" id="userId" name="userId"><br><br>
+    <label for="roomId">Room Code:</label>
+    <input type="text" id="roomId" name="roomId"><br><br>
+    <button class="button" id="join">Join chatroom</button>
+  </div>
+  <script>
     let joinButton = document.getElementById("join");
-    let roomCode = document.getElementById("roomCode");
+    let roomId = document.getElementById("roomId");
+    let userId = document.getElementById("userId");
     joinButton.addEventListener("click", async () => {
-        // will redirect to new chatroom
-        window.location = `/room/${roomCode.value}`;
+      // will redirect to new chatroom
+      let url = `/room/${roomId.value}`;
+      let data = {
+        roomId: roomId.value,
+        userId: userId.value
+      };
+      fetch(url).then(response => {
+        if(response.status === 404 ){
+          alert("This room code does not exist");
+        } else{
+          window.location = `/room/${roomId.value}`;
+        }
     });
+  });
   </script>
 </body>
 </html>

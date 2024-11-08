@@ -55,11 +55,23 @@
   // });
 
   // /* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */
+  let url = `/room/${roomId.value}`;
 
-  // socket.on("bar", function(data) {
-  //   console.log("Received message:", data);
-  //   appendMessage(data);
-  // });
+  fetch(url, {
+    method: 'POST', // HTTP method
+    headers: {
+      'Content-Type': 'application/json' // Send data as JSON
+    },
+    body: JSON.stringify(data) // Convert the JavaScript object to a JSON string
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to send data');
+    }
+    return response.json(); // or response.text() depending on the server response format
+  }).then(body => {
+    console.log("hello")
+    console.log(body)
+  });
 </script>
 </body>
 </html>

@@ -56,6 +56,7 @@ app.post('/login', async (req, res) => {
 });
 
 let rooms = {};
+let users= {};
 function generateRoomCode() {
   let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let result = "";
@@ -93,6 +94,13 @@ app.get("/room/:roomId", (req, res) => {
   // but the client can also get the roomId from the URL
   // and use Ajax to request the messages on load
   res.sendFile("public/room.html", { root: __dirname });
+});
+
+app.post("/room/:roomId", (req, res) => {
+  let roomId = req.body.roomId;
+  let userId = req.body.userId;
+  users[roomId] = { userId };
+  return res.json({ users });
 });
 
 // if you need to do things like associate a socket with a logged in user, see
