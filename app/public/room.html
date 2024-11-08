@@ -20,6 +20,9 @@
   // if we did server side rendering, server could embed it in the JS for us
   let pathParts = window.location.pathname.split("/");
   let roomId = pathParts[pathParts.length - 1] ;
+  let usersList = document.getElementById("usersList");
+
+
 
   function appendMessage(message) {
     let item = document.createElement("div");
@@ -53,6 +56,16 @@
     socket.emit("foo", { message });
     // need to append its own message, as it won't receive its own event
     appendMessage(message);
+  });
+
+  socket.on('updateUserList', (userList) => {
+    usersList.innerHTML = ''
+
+    userList.forEach(user => {
+      let listItem = document.createElement('li');
+      listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
+      usersList.appendChild(listItem);
+    });
   });
 
   // /* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */

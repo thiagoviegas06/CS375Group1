@@ -56,7 +56,6 @@ app.post('/login', async (req, res) => {
 });
 
 let rooms = {};
-let users= {};
 function generateRoomCode() {
   let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let result = "";
@@ -76,9 +75,24 @@ function printRooms() {
   }
 }
 
+function updateRoomUsers(roomId) {
+  const userList = rooms[roomId].users.map(user => ({
+    username: user.username,
+    isPartyLeader: user.isPartyLeader,
+  }));
+
+  // Emit the updated user list to all clients in the room
+  for (let socket of Object.values(rooms[roomId].sockets)) {
+    socket.emit('updateUserList', userList);
+  }
+}
+
 app.post("/create", (req, res) => {
   let roomId = generateRoomCode();
-  rooms[roomId] = {};
+  rooms[roomId] = {
+    users: [],
+    sockets: {},
+  };
   return res.json({ roomId });
 });
 
@@ -99,7 +113,12 @@ app.get("/room/:roomId", (req, res) => {
 app.post("/room/:roomId", (req, res) => {
   let roomId = req.body.roomId;
   let userId = req.body.userId;
-  users[roomId] = { userId };
+    let user = {
+      socketID: socket.id,
+      userId: username,
+    }
+    rooms[roomId]["users"].append(user)
+    console.log(rooms[roomId]["users"])
   return res.json({ users });
 });
 
@@ -110,6 +129,7 @@ app.post("/room/:roomId", (req, res) => {
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connected`);
 
+  let username = "AwayAntelope988"
   // extract room ID from URL
   // could also send a separate registration event to register a socket to a room
   // might want to do that ^ b/c not all browsers include referer, I think
@@ -125,7 +145,18 @@ io.on("connection", (socket) => {
 
   // add socket object to room so other sockets in same room
   // can send messages to it later
-  rooms[roomId][socket.id] = socket;
+  rooms[roomId].sockets[socket.id] = socket;
+  
+  let isPartyLeader = rooms[roomId].users.length === 0 //if first person to join, then you are the party leader
+
+  rooms[roomId].users.push({
+    socketId: socket.id,
+    username: username,
+    isPartyLeader: isPartyLeader,
+  });
+
+  updateRoomUsers(roomId);
+
 
   /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
 
@@ -135,9 +166,13 @@ io.on("connection", (socket) => {
     // WARNING: sockets don't always send disconnect events
     // so you may want to periodically clean up your room object for old socket ids
     console.log(`Socket ${socket.id} disconnected`);
-    delete rooms[roomId][socket.id];
-  });
+    rooms[roomId].users = rooms[roomId].users.filter(user => user.socketId !== socket.id);
+    delete rooms[roomId].sockets[socket.id];
 
+    // Notify all clients in the room about the updated user list
+    updateRoomUsers(roomId);
+  });
+  
   socket.on("foo", ({ message }) => {
     // we still have a reference to the roomId defined above
     // b/c this function is defined inside the outer function
