@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo</title>
+</head>
+<body>
+  <input id="input">
+  <button id="send">Send</button>
+  <div id="messages"></div>
+
+  <!-- MUST INCLUDE SOCKET LIBRARY HERE -->
+  <!-- REMEMBER TO COPY THIS FROM socket.io's node_modules INTO public -->
+<script src="/socket.io.js"></script>
+
+<script>
+  // extract room ID from URL
+  // if we did server side rendering, server could embed it in the JS for us
+  let pathParts = window.location.pathname.split("/");
+  let roomId = pathParts[pathParts.length - 1] ;
+
+  function appendMessage(message) {
+    let item = document.createElement("div");
+    item.textContent = message;
+    messagesDiv.appendChild(item);
+  }
+
+  let socket = io();
+  // WARNING: socket.connected will NOT be true immediately
+  // if you try to immediately emit an event
+  // it'll wait until it's connected, then send - that's fine
+  socket.emit("hello", "world"); // works
+  // but if you wanted to e.g. do something with the socket id
+  // it will be undefined until the socket connects
+  console.log(socket.id); // undefined, b/c hasn't connected yet
+  // so if you need the id for some reason
+  // you can register an event listener for the connected event:
+  socket.on("connect", () => { console.log("I am connected", socket.id); });
+
+  // let button = document.getElementById("send");
+  // let input = document.getElementById("input");
+  // let messagesDiv = document.getElementById("messages");
+
+  // button.addEventListener("click", () => {
+  //   let message = input.value;
+  //   if (message === "") {
+  //     return;
+  //   }
+  //   console.log("Sending message:", message);
+  //   // socket.emit can send a string, object, array, etc.
+  //   socket.emit("foo", { message });
+  //   // need to append its own message, as it won't receive its own event
+  //   appendMessage(message);
+  // });
+
+  // /* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */
+  let url = `/room/${roomId.value}`;
+
+  fetch(url, {
+    method: 'POST', // HTTP method
+    headers: {
+      'Content-Type': 'application/json' // Send data as JSON
+    },
+    body: JSON.stringify(data) // Convert the JavaScript object to a JSON string
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to send data');
+    }
+    return response.json(); // or response.text() depending on the server response format
+  }).then(body => {
+    console.log("hello")
+    console.log(body)
+  });
+</script>
+</body>
+</html>

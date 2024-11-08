@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Demo</title>
+</head>
+<body>
+    <div class="login-container">
+        <button class="button" id="send">Create chatroom</button> <br>
+        <button class="button" id="join">Join chatroom</button>
+    </div>  
+    <div id="ids"></div>
+    <script>
+        let button = document.getElementById("send");
+        let idsDiv = document.getElementById("ids");
+        let joinButton = document.getElementById("join");
+        button.addEventListener("click", async () => {
+            let response = await fetch("/create", { method: "POST" })
+            let { roomId } = await response.json();
+            // will redirect to new chatroom immediately
+            window.location = `/room/${roomId}`;
+        });
+        joinButton.addEventListener("click", async () => {
+            // will redirect to new chatroom immediately
+            window.location.href = `join.html`;
+        });
+    </script>
+</body>
+</html>
