@@ -9,9 +9,22 @@ let http = require("http");
 let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
+const session = require('express-session');
+const sharedsession = require('express-socket.io-session');
 
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const sessionMiddleware = session({
+  secret: 'SecretKey1',
+  resave: false,
+  saveUninitialized: true,
+});
+app.use(sessionMiddleware);
+io.use(sharedsession(sessionMiddleware, {
+  autoSave: true,
+}));
 
 const userTable = new UserTable();  // Table to interact with database
 
@@ -43,6 +56,8 @@ app.post('/login', async (req, res) => {
     const user = await userTable.findByUsername(username);
     if (user) {
       if (password === user.password) {
+        req.session.username = username;
+        req.session.save()
         res.json({ success: true, message: 'Login successful' });
       } else {
         res.status(401).json({ success: false, message: 'Invalid username or password' });
@@ -52,6 +67,21 @@ app.post('/login', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+app.post('/guest-username', (req, res) => {
+  const username = req.body.username;
+  console.log("USERNAME HERE " + username)
+  req.session.username = username;
+  req.session.save()
+});
+
+app.get('/get-username', (req, res) => {
+  if (req.session.username) {
+    res.json({ success: true, username: req.session.username });
+  } else {
+    res.json({ success: false, message: 'No username found in session' });
   }
 });
 
@@ -129,7 +159,14 @@ app.post("/room/:roomId", (req, res) => {
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connected`);
 
-  let username = "AwayAntelope988"
+  let username = ""
+
+  console.log(socket.handshake.session)
+  if (socket.handshake.session.username) {
+    username = socket.handshake.session.username;
+  } else {
+    username = "AwayAntolope27";
+  }
   // extract room ID from URL
   // could also send a separate registration event to register a socket to a room
   // might want to do that ^ b/c not all browsers include referer, I think
