@@ -9,6 +9,7 @@
   <input id="input">
   <button id="send">Send</button>
   <div id="messages"></div>
+  <div id="usersList"></div>
 
   <!-- MUST INCLUDE SOCKET LIBRARY HERE -->
   <!-- REMEMBER TO COPY THIS FROM socket.io's node_modules INTO public -->
@@ -38,40 +39,44 @@
   // you can register an event listener for the connected event:
   socket.on("connect", () => { console.log("I am connected", socket.id); });
 
-  // let button = document.getElementById("send");
-  // let input = document.getElementById("input");
-  // let messagesDiv = document.getElementById("messages");
+  let button = document.getElementById("send");
+  let input = document.getElementById("input");
+  let messagesDiv = document.getElementById("messages");
 
-  // button.addEventListener("click", () => {
-  //   let message = input.value;
-  //   if (message === "") {
-  //     return;
-  //   }
-  //   console.log("Sending message:", message);
-  //   // socket.emit can send a string, object, array, etc.
-  //   socket.emit("foo", { message });
-  //   // need to append its own message, as it won't receive its own event
-  //   appendMessage(message);
-  // });
+  button.addEventListener("click", () => {
+    let message = input.value;
+    if (message === "") {
+      return;
+    }
+    console.log("Sending message:", message);
+    // socket.emit can send a string, object, array, etc.
+    socket.emit("foo", { message });
+    // need to append its own message, as it won't receive its own event
+    appendMessage(message);
+  });
 
   // /* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */
   let url = `/room/${roomId.value}`;
 
-  fetch(url, {
-    method: 'POST', // HTTP method
-    headers: {
-      'Content-Type': 'application/json' // Send data as JSON
-    },
-    body: JSON.stringify(data) // Convert the JavaScript object to a JSON string
-  }).then(response => {
-    if (!response.ok) {
-      throw new Error('Failed to send data');
-    }
-    return response.json(); // or response.text() depending on the server response format
-  }).then(body => {
-    console.log("hello")
-    console.log(body)
-  });
+  // fetch(url, {
+  //   method: 'POST', // HTTP method
+  //   headers: {
+  //     'Content-Type': 'application/json' // Send data as JSON
+  //   },
+  //   body: JSON.stringify(data) // Convert the JavaScript object to a JSON string
+  // }).then(response => {
+  //   if (!response.ok) {
+  //     throw new Error('Failed to send data');
+  //   }
+  //   return response.json(); // or response.text() depending on the server response format
+  // }).then(body => {
+  //   console.log("hello")
+  //   console.log(body)
+  // });
+  socket.on("bar", function(data) {
+      console.log("Received message:", data);
+      appendMessage(data);
+    });
 </script>
 </body>
 </html>
