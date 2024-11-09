@@ -13,7 +13,7 @@ let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
 
-app.set('view engine','ejs');
+app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);
 app.set('views', __dirname + path.sep + 'public');
 
@@ -80,14 +80,26 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.post("/logout", (req, res) => {
+  if (!req.session.authenticated) {
+    return res.status(400).json({ success: false, message: 'No session' });
+  }
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Failed to destroy' });
+    }
+  });
+  return res.status(200).json({ success: true, message: 'Session ended' });
+});
+
 app.get("/myprofile", async (req, res) => {
-  if (!req.session.authenticated){
+  if (!req.session.authenticated) {
     return res.sendFile("public/profile_logged_out.html", { root: __dirname });
   }
   const cookieJSON = store["sessions"][req.sessionID];
   const cookie = JSON.parse(cookieJSON);
   const picPath = `profile_pic/${cookie.user}.jpg`;
-  return res.render('profile_logged_in.html', {name: cookie.user, pic: picPath});
+  return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
 })
 
 let rooms = {};
