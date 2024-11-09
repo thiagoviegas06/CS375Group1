@@ -1,0 +1,29 @@
+<!--Dynamic html page-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Page</title>
+    <link rel="stylesheet" href="profile.css">
+</head>
+<body>
+    <div class="profile-container">
+        <img src=<%= pic %> alt="Profile Picture">
+        <h2><%= name %></h2>
+        <div class="info">
+            <div>
+                <label>username:</label>
+                <span><%= name %></span>
+            </div>
+            <div>
+                <label>Bio:</label>
+                <span>Passionate about CS 375 group one</span>
+            </div>
+            <div>
+                <a href="/"><label>Back</label></a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
