@@ -12,6 +12,8 @@ let http = require("http");
 let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
+const session = require('express-session');
+const sharedsession = require('express-socket.io-session');
 
 app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);
@@ -29,6 +31,17 @@ app.use(session(
 ))
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const sessionMiddleware = session({
+  secret: 'SecretKey1',
+  resave: false,
+  saveUninitialized: true,
+});
+app.use(sessionMiddleware);
+io.use(sharedsession(sessionMiddleware, {
+  autoSave: true,
+}));
 
 const userTable = new UserTable();  // Table to interact with database
 
@@ -80,6 +93,24 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.post('/guest-username', (req, res) => {
+  const username = req.body.username;
+  console.log("USERNAME HERE " + username)
+  req.session.username = username;
+  req.session.save()
+});
+
+app.get('/get-username', (req, res) => {
+  if (req.session.username) {
+    res.json({ success: true, username: req.session.username });
+  } else {
+    res.json({ success: false, message: 'No username found in session' });
+  }
+});
+
+let rooms = {};
+let users = {};
+
 app.post("/logout", (req, res) => {
   if (!req.session.authenticated) {
     return res.status(400).json({ success: false, message: 'No session' });
@@ -102,8 +133,6 @@ app.get("/myprofile", async (req, res) => {
   return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
 })
 
-let rooms = {};
-let users = {};
 function generateRoomCode() {
   let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let result = "";
@@ -123,9 +152,24 @@ function printRooms() {
   }
 }
 
+function updateRoomUsers(roomId) {
+  const userList = rooms[roomId].users.map(user => ({
+    username: user.username,
+    isPartyLeader: user.isPartyLeader,
+  }));
+
+  // Emit the updated user list to all clients in the room
+  for (let socket of Object.values(rooms[roomId].sockets)) {
+    socket.emit('updateUserList', userList);
+  }
+}
+
 app.post("/create", (req, res) => {
   let roomId = generateRoomCode();
-  rooms[roomId] = {};
+  rooms[roomId] = {
+    users: [],
+    sockets: {},
+  };
   return res.json({ roomId });
 });
 
@@ -146,7 +190,12 @@ app.get("/room/:roomId", (req, res) => {
 app.post("/room/:roomId", (req, res) => {
   let roomId = req.body.roomId;
   let userId = req.body.userId;
-  users[roomId] = { userId };
+    let user = {
+      socketID: socket.id,
+      userId: username,
+    }
+    rooms[roomId]["users"].append(user)
+    console.log(rooms[roomId]["users"])
   return res.json({ users });
 });
 
@@ -157,6 +206,14 @@ app.post("/room/:roomId", (req, res) => {
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connected`);
 
+  let username = ""
+
+  console.log(socket.handshake.session)
+  if (socket.handshake.session.username) {
+    username = socket.handshake.session.username;
+  } else {
+    username = "AwayAntolope27";
+  }
   // extract room ID from URL
   // could also send a separate registration event to register a socket to a room
   // might want to do that ^ b/c not all browsers include referer, I think
@@ -172,7 +229,18 @@ io.on("connection", (socket) => {
 
   // add socket object to room so other sockets in same room
   // can send messages to it later
-  rooms[roomId][socket.id] = socket;
+  rooms[roomId].sockets[socket.id] = socket;
+  
+  let isPartyLeader = rooms[roomId].users.length === 0 //if first person to join, then you are the party leader
+
+  rooms[roomId].users.push({
+    socketId: socket.id,
+    username: username,
+    isPartyLeader: isPartyLeader,
+  });
+
+  updateRoomUsers(roomId);
+
 
   /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
 
@@ -182,9 +250,13 @@ io.on("connection", (socket) => {
     // WARNING: sockets don't always send disconnect events
     // so you may want to periodically clean up your room object for old socket ids
     console.log(`Socket ${socket.id} disconnected`);
-    delete rooms[roomId][socket.id];
-  });
+    rooms[roomId].users = rooms[roomId].users.filter(user => user.socketId !== socket.id);
+    delete rooms[roomId].sockets[socket.id];
 
+    // Notify all clients in the room about the updated user list
+    updateRoomUsers(roomId);
+  });
+  
   socket.on("foo", ({ message }) => {
     // we still have a reference to the roomId defined above
     // b/c this function is defined inside the outer function

@@ -19,7 +19,17 @@
     let joinButton = document.getElementById("join");
     let roomId = document.getElementById("roomId");
     let userId = document.getElementById("userId");
+
     joinButton.addEventListener("click", async () => {
+      let username = userId.value;
+      fetch("/guest-username", {
+        method: 'POST', // HTTP method
+        headers: {
+          'Content-Type': 'application/json' // Send data as JSON
+        },
+        body: JSON.stringify({ username }) // Convert the JavaScript object to a JSON string
+      });
+
       // will redirect to new chatroom
       let url = `/room/${roomId.value}`;
       let data = {
