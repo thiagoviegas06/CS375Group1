@@ -8,14 +8,21 @@
 </head>
 <body>
     <div class="login-container">
+        <button class="button" id="myprofile">My Profile</button> <br>
         <button class="button" id="send">Create chatroom</button> <br>
-        <button class="button" id="join">Join chatroom</button>
+        <button class="button" id="join">Join chatroom</button> <br>
+        <button class="button" id="logout">Log out</button>
     </div>  
     <div id="ids"></div>
     <script>
+        let profileButton = document.getElementById("myprofile");
         let button = document.getElementById("send");
         let idsDiv = document.getElementById("ids");
         let joinButton = document.getElementById("join");
+        let signOutButton = document.getElementById("logout");
+        profileButton.addEventListener("click", () => {
+            window.location = "myProfile";
+        })
         button.addEventListener("click", async () => {
             let response = await fetch("/create", { method: "POST" })
             let { roomId } = await response.json();
@@ -26,6 +33,10 @@
             // will redirect to new chatroom immediately
             window.location.href = `join.html`;
         });
+        signOutButton.addEventListener("click", async () => {
+            let _ = await fetch("/logout", {method: "POST"});
+            window.location = "/";
+        })
     </script>
 </body>
 </html>
