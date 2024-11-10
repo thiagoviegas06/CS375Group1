@@ -111,8 +111,21 @@
     });
 
     socket.on('votingResults', (data) => {
-      const results = data;
-      console.log(results);
+      const results = data.results;
+      let resultsSection = document.getElementById('votingSection');
+      resultsSection.innerHTML = '<h2>Voting Results</h2>';
+
+      let resultsList = document.createElement('ul');
+
+      console.log(data)
+
+      for (const restaurant of Object.values(results)) {
+        let listItem = document.createElement('li');
+        listItem.textContent = `${restaurant.name}: ${restaurant.score}`;
+        resultsList.appendChild(listItem);
+      }
+
+      resultsSection.appendChild(resultsList);
     });
   </script>
   
