@@ -12,38 +12,33 @@ let http = require("http");
 let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
-const session = require('express-session');
 const sharedsession = require('express-socket.io-session');
 
 app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);
 app.set('views', __dirname + path.sep + 'public');
 
-app.use(session(
-  {
-    secret: 'cs375_group_one',
-    cookie: {
-      maxAge: 30 * 60 * 1000
-    },
-    saveUninitialized: false,
-    store: store
-  }
-))
-app.use(express.static('public'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 const sessionMiddleware = session({
-  secret: 'SecretKey1',
+  secret: 'cs375_group_one',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  store: store,
+  cookie: {
+    maxAge: 30 * 60 * 1000
+  }
 });
+
 app.use(sessionMiddleware);
+
 io.use(sharedsession(sessionMiddleware, {
   autoSave: true,
 }));
 
-const userTable = new UserTable();  // Table to interact with database
+app.use(express.static('public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const userTable = new UserTable();
 
 app.get('/', (req, res) => {
   res.sendFile('index.html');
@@ -78,7 +73,8 @@ app.post('/login', async (req, res) => {
       if (user) {
         if (password === user.password) {
           req.session.authenticated = true;
-          req.session.user = username;
+          req.session.username = username;
+          req.session.save()
           res.json({ success: true, message: 'Login successful' });
         } else {
           res.status(401).json({ success: false, message: 'Invalid username or password' });
@@ -95,7 +91,6 @@ app.post('/login', async (req, res) => {
 
 app.post('/guest-username', (req, res) => {
   const username = req.body.username;
-  console.log("USERNAME HERE " + username)
   req.session.username = username;
   req.session.save()
 });
@@ -108,48 +103,24 @@ app.get('/get-username', (req, res) => {
   }
 });
 
-let rooms = {};
-let users = {};
-
-app.post("/logout", (req, res) => {
-  if (!req.session.authenticated) {
-    return res.status(400).json({ success: false, message: 'No session' });
-  }
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Failed to destroy' });
-    }
-  });
-  return res.status(200).json({ success: true, message: 'Session ended' });
-});
-
-app.get("/myprofile", async (req, res) => {
-  if (!req.session.authenticated) {
-    return res.sendFile("public/profile_logged_out.html", { root: __dirname });
-  }
-  const cookieJSON = store["sessions"][req.sessionID];
-  const cookie = JSON.parse(cookieJSON);
-  const picPath = `profile_pic/${cookie.user}.jpg`;
-  return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
-})
+let rooms = {
+  roomId: {
+    users: [],
+    sockets: {},
+    votingActive: false,
+    votes: {},
+    usersFinishedVoting: [],
+    restaurants: [],
+  },
+};
 
 function generateRoomCode() {
-  let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
+  let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let result = '';
   for (let i = 0; i < 4; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return result;
-}
-
-// for debugging
-function printRooms() {
-  for (let [roomId, sockets] of Object.entries(rooms)) {
-    console.log(roomId);
-    for (let [socketId, socket] of Object.entries(sockets)) {
-      console.log(`\t${socketId}`);
-    }
-  }
 }
 
 function updateRoomUsers(roomId) {
@@ -158,13 +129,12 @@ function updateRoomUsers(roomId) {
     isPartyLeader: user.isPartyLeader,
   }));
 
-  // Emit the updated user list to all clients in the room
   for (let socket of Object.values(rooms[roomId].sockets)) {
     socket.emit('updateUserList', userList);
   }
 }
 
-app.post("/create", (req, res) => {
+app.post('/create', (req, res) => {
   let roomId = generateRoomCode();
   rooms[roomId] = {
     users: [],
@@ -173,116 +143,112 @@ app.post("/create", (req, res) => {
   return res.json({ roomId });
 });
 
-app.get("/room/:roomId", (req, res) => {
+app.get('/room/:roomId', (req, res) => {
   let { roomId } = req.params;
   if (!rooms.hasOwnProperty(roomId)) {
     return res.status(404).send();
   }
-  console.log("Sending room", roomId);
-  // could also use server-side rendering to create the HTML
-  // that way, we could embed the room code
-  // and existing chat messages in the generated HTML
-  // but the client can also get the roomId from the URL
-  // and use Ajax to request the messages on load
-  res.sendFile("public/room.html", { root: __dirname });
+  res.sendFile('public/room.html', { root: __dirname });
 });
 
-app.post("/room/:roomId", (req, res) => {
-  let roomId = req.body.roomId;
-  let userId = req.body.userId;
-    let user = {
-      socketID: socket.id,
-      userId: username,
-    }
-    rooms[roomId]["users"].append(user)
-    console.log(rooms[roomId]["users"])
-  return res.json({ users });
-});
-
-// if you need to do things like associate a socket with a logged in user, see
-// https://socket.io/how-to/deal-with-cookies
-// to see how you can fetch application cookies from the socket
-
-io.on("connection", (socket) => {
+io.on('connection', (socket) => {
   console.log(`Socket ${socket.id} connected`);
 
-  let username = ""
+  socket.on('joinRoom', (data) => {
+    const { roomId } = data;
+    const username = socket.handshake.session.username || 'GUEST';
 
-  console.log(socket.handshake.session)
-  if (socket.handshake.session.username) {
-    username = socket.handshake.session.username;
-  } else {
-    username = "AwayAntolope27";
-  }
-  // extract room ID from URL
-  // could also send a separate registration event to register a socket to a room
-  // might want to do that ^ b/c not all browsers include referer, I think
-  let url = socket.handshake.headers.referer;
-  let pathParts = url.split("/");
-  let roomId = pathParts[pathParts.length - 1];
-  console.log(pathParts, roomId);
+    if (!rooms.hasOwnProperty(roomId)) {
+      socket.emit('error', { message: 'Room does not exist.' });
+      return;
+    }
 
-  // room doesn't exist - this should never happen, but jic
-  if (!rooms.hasOwnProperty(roomId)) {
-    return;
-  }
+    socket.roomId = roomId;
+    rooms[roomId].sockets[socket.id] = socket;
 
-  // add socket object to room so other sockets in same room
-  // can send messages to it later
-  rooms[roomId].sockets[socket.id] = socket;
-  
-  let isPartyLeader = rooms[roomId].users.length === 0 //if first person to join, then you are the party leader
+    let isPartyLeader = rooms[roomId].users.length === 0;
 
-  rooms[roomId].users.push({
-    socketId: socket.id,
-    username: username,
-    isPartyLeader: isPartyLeader,
-  });
+    rooms[roomId].users.push({
+      socketId: socket.id,
+      username: username,
+      isPartyLeader: isPartyLeader,
+    });
 
-  updateRoomUsers(roomId);
-
-
-  /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
-
-  socket.on("disconnect", () => {
-    // disconnects are normal; close tab, refresh, browser freezes inactive tab, ...
-    // want to clean up global object, or else we'll have a memory leak
-    // WARNING: sockets don't always send disconnect events
-    // so you may want to periodically clean up your room object for old socket ids
-    console.log(`Socket ${socket.id} disconnected`);
-    rooms[roomId].users = rooms[roomId].users.filter(user => user.socketId !== socket.id);
-    delete rooms[roomId].sockets[socket.id];
-
-    // Notify all clients in the room about the updated user list
     updateRoomUsers(roomId);
   });
+
+
+  socket.on('disconnect', () => {
+    const roomId = socket.roomId;
+    if (roomId && rooms[roomId]) {
+      rooms[roomId].users = rooms[roomId].users.filter(user => user.socketId !== socket.id);
+      delete rooms[roomId].sockets[socket.id];
+      updateRoomUsers(roomId);
+    }
+    console.log(`Socket ${socket.id} disconnected`);
+  });
+
+  socket.on('startVoting', () => {
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+    const user = room.users.find(u => u.socketId === socket.id);
   
-  socket.on("foo", ({ message }) => {
-    // we still have a reference to the roomId defined above
-    // b/c this function is defined inside the outer function
-    console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
-    console.log("Broadcasting message to other sockets");
-
-    // this would send the message to all other sockets
-    // but we want to only send it to other sockets in this room
-    // socket.broadcast.emit("message", message);
-
-    for (let otherSocket of Object.values(rooms[roomId])) {
-      // don't need to send same message back to socket
-      // socket.broadcast.emit automatically skips current socket
-      // but since we're doing this manually, we need to do it ourselves
-      if (otherSocket.id === socket.id) {
-        continue;
-      }
-      console.log(`Sending message ${message} to socket ${otherSocket.id}`);
-      otherSocket.emit("bar", message);
+    if (!user || !user.isPartyLeader) {
+      return;
+    }
+  
+    room.votingActive = true;
+    room.votes = {};
+    room.usersFinishedVoting = [];
+    room.restaurants = getDummyRestaurants();
+  
+    for (let s of Object.values(room.sockets)) {
+      s.emit('startVoting', { restaurants: room.restaurants });
     }
   });
 
-  socket.on("hello", (data) => {
-    console.log(data);
+  socket.on('submitVotes', (data) => {
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+    const username = socket.handshake.session.username || 'GUEST';
+  
+    room.votes[username] = data.votes;
+    if (!room.usersFinishedVoting.includes(username)) {
+      room.usersFinishedVoting.push(username);
+    }
+  
+    if (room.usersFinishedVoting.length === room.users.length) {
+      const results = calculateResults(room.votes, room.restaurants);
+  
+      for (let s of Object.values(room.sockets)) {
+        s.emit('votingResults', { results });
+      }
+      room.votingActive = false;
+    }
   });
 });
+
+function calculateResults(votes, restaurants) {
+  const restaurantScores = Object.fromEntries(restaurants.map(restaurant => [restaurant.name, 0]));
+
+  for (const userVotes of Object.values(votes)) {
+    for (const [restaurant, score] of Object.entries(userVotes)) {
+      restaurantScores[restaurant] += score;
+    }
+  }
+
+  return Object.entries(restaurantScores).sort((a, b) => b[1] - a[1]).map(([name, score]) => ({ name, score }));
+}
+
+function getDummyRestaurants() {
+  return [
+    { id: 1, name: 'Restaurant A', picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop"},
+    { id: 2, name: 'Restaurant B', picture: "https://pbs.twimg.com/media/GDQTNcgXMAAbTcI.jpg:large" },
+    { id: 3, name: 'Restaurant C', picture: "https://i.giphy.com/2zUn8hAwJwG4abiS0p.webp"},
+    { id: 4, name: 'Restaurant D', picture: "https://media.tenor.com/v6j3qu9ZmMIAAAAM/funny-cat.gif" }
+  ];
+}
+
 
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}`);

@@ -8,88 +8,113 @@
 <body>
   <input id="input">
   <button id="send">Send</button>
-  <div id="messages"></div>
+  <button id="startVote" style="display: none;">Start Vote</button>
   <div id="usersList"></div>
+  
+  <div id="votingSection"></div>
 
-  <!-- MUST INCLUDE SOCKET LIBRARY HERE -->
-  <!-- REMEMBER TO COPY THIS FROM socket.io's node_modules INTO public -->
-<script src="/socket.io.js"></script>
+  <script src="/socket.io.js"></script>
 
-<script>
-  // extract room ID from URL
-  // if we did server side rendering, server could embed it in the JS for us
-  let pathParts = window.location.pathname.split("/");
-  let roomId = pathParts[pathParts.length - 1] ;
-  let usersList = document.getElementById("usersList");
-
-
-
-  function appendMessage(message) {
-    let item = document.createElement("div");
-    item.textContent = message;
-    messagesDiv.appendChild(item);
-  }
-
-  let socket = io();
-  // WARNING: socket.connected will NOT be true immediately
-  // if you try to immediately emit an event
-  // it'll wait until it's connected, then send - that's fine
-  socket.emit("hello", "world"); // works
-  // but if you wanted to e.g. do something with the socket id
-  // it will be undefined until the socket connects
-  console.log(socket.id); // undefined, b/c hasn't connected yet
-  // so if you need the id for some reason
-  // you can register an event listener for the connected event:
-  socket.on("connect", () => { console.log("I am connected", socket.id); });
-
-  let button = document.getElementById("send");
-  let input = document.getElementById("input");
-  let messagesDiv = document.getElementById("messages");
-
-  button.addEventListener("click", () => {
-    let message = input.value;
-    if (message === "") {
-      return;
-    }
-    console.log("Sending message:", message);
-    // socket.emit can send a string, object, array, etc.
-    socket.emit("foo", { message });
-    // need to append its own message, as it won't receive its own event
-    appendMessage(message);
-  });
-
-  socket.on('updateUserList', (userList) => {
-    usersList.innerHTML = ''
-
-    userList.forEach(user => {
-      let listItem = document.createElement('li');
-      listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
-      usersList.appendChild(listItem);
+  <script>
+    let socket = io();
+    let usersList = document.getElementById("usersList");
+    let startVoteButton = document.getElementById("startVote");
+    let clientUsername = null;
+  
+    fetch('/get-username')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          clientUsername = data.username;
+        }
+      });
+  
+    let pathParts = window.location.pathname.split("/");
+    let roomId = pathParts[pathParts.length - 1];
+  
+    socket.emit('joinRoom', { "roomId": roomId });
+  
+    socket.on('updateUserList', (userList) => {
+      usersList.innerHTML = '';
+  
+      userList.forEach(user => {
+        let listItem = document.createElement('li');
+        listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
+        usersList.appendChild(listItem);
+  
+        if (user.isPartyLeader && user.username === clientUsername) {
+          startVoteButton.style.display = 'inline-block';
+        }
+      });
     });
-  });
-
-  // /* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */
-  let url = `/room/${roomId.value}`;
-
-  // fetch(url, {
-  //   method: 'POST', // HTTP method
-  //   headers: {
-  //     'Content-Type': 'application/json' // Send data as JSON
-  //   },
-  //   body: JSON.stringify(data) // Convert the JavaScript object to a JSON string
-  // }).then(response => {
-  //   if (!response.ok) {
-  //     throw new Error('Failed to send data');
-  //   }
-  //   return response.json(); // or response.text() depending on the server response format
-  // }).then(body => {
-  //   console.log("hello")
-  //   console.log(body)
-  // });
-  socket.on("bar", function(data) {
-      console.log("Received message:", data);
-      appendMessage(data);
+  
+    startVoteButton.addEventListener("click", () => {
+      socket.emit("startVoting", { roomId: roomId });
     });
-</script>
+  
+    socket.on('startVoting', (data) => {
+      const restaurants = data.restaurants;
+      let currentIndex = 0;
+      let userVotes = {};
+      let submittedVote = false;
+  
+      function displayRestaurant(index) {
+        if (index >= restaurants.length && !submittedVote) {
+          socket.emit('submitVotes', { votes: userVotes });
+          document.getElementById('votingSection').innerHTML = "<p>Voting completed. Thank you!</p>";
+          submittedVote = true;
+          return;
+        }
+
+        const restaurant = restaurants[index];
+        let votingSection = document.getElementById('votingSection');
+        votingSection.innerHTML = '';
+  
+        let restaurantDiv = document.createElement('div');
+  
+        let nameElement = document.createElement('h2');
+        nameElement.textContent = restaurant.name;
+  
+        let pictureElement = document.createElement('img');
+        pictureElement.src = restaurant.picture;
+        pictureElement.alt = restaurant.name;
+        pictureElement.style.maxWidth = '400px';
+        pictureElement.style.height = 'auto';
+  
+        let yesButton = document.createElement('button');
+        yesButton.textContent = 'Yes';
+  
+        let noButton = document.createElement('button');
+        noButton.textContent = 'No';
+  
+        yesButton.addEventListener('click', () => {
+          currentIndex++;
+          userVotes[restaurant.name] = 1;
+          displayRestaurant(currentIndex);
+        });
+  
+        noButton.addEventListener('click', () => {
+          currentIndex++;
+          userVotes[restaurant.name] = -1;
+          displayRestaurant(currentIndex);
+        });
+  
+        restaurantDiv.appendChild(nameElement);
+        restaurantDiv.appendChild(pictureElement);
+        restaurantDiv.appendChild(yesButton);
+        restaurantDiv.appendChild(noButton);
+  
+        votingSection.appendChild(restaurantDiv);
+      }
+  
+      displayRestaurant(currentIndex);
+    });
+
+    socket.on('votingResults', (data) => {
+      const results = data;
+      console.log(results);
+    });
+  </script>
+  
 </body>
 </html>
