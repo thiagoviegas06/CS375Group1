@@ -1,5 +1,8 @@
 const express = require('express');
 const axios = require('axios');
+const session = require('express-session');
+const bodyParser = require('body-parser');
+const store = new session.MemoryStore();
 const app = express();
 const { UserTable } = require('./models/tables.js');
 const path = require('path');
@@ -10,6 +13,20 @@ let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
 
+app.set('view engine', 'ejs');
+app.engine('html', require('ejs').renderFile);
+app.set('views', __dirname + path.sep + 'public');
+
+app.use(session(
+  {
+    secret: 'cs375_group_one',
+    cookie: {
+      maxAge: 30 * 60 * 1000
+    },
+    saveUninitialized: false,
+    store: store
+  }
+))
 app.use(express.static('public'));
 app.use(express.json());
 
@@ -41,22 +58,52 @@ app.post('/login', async (req, res) => {
 
   try {
     const user = await userTable.findByUsername(username);
-    if (user) {
-      if (password === user.password) {
-        res.json({ success: true, message: 'Login successful' });
+    if (req.session.authenticated) {
+      res.json({ success: true, message: 'Already logged in' });
+    }
+    else {
+      if (user) {
+        if (password === user.password) {
+          req.session.authenticated = true;
+          req.session.user = username;
+          res.json({ success: true, message: 'Login successful' });
+        } else {
+          res.status(401).json({ success: false, message: 'Invalid username or password' });
+        }
       } else {
         res.status(401).json({ success: false, message: 'Invalid username or password' });
       }
-    } else {
-      res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
+
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
+app.post("/logout", (req, res) => {
+  if (!req.session.authenticated) {
+    return res.status(400).json({ success: false, message: 'No session' });
+  }
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Failed to destroy' });
+    }
+  });
+  return res.status(200).json({ success: true, message: 'Session ended' });
+});
+
+app.get("/myprofile", async (req, res) => {
+  if (!req.session.authenticated) {
+    return res.sendFile("public/profile_logged_out.html", { root: __dirname });
+  }
+  const cookieJSON = store["sessions"][req.sessionID];
+  const cookie = JSON.parse(cookieJSON);
+  const picPath = `profile_pic/${cookie.user}.jpg`;
+  return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
+})
+
 let rooms = {};
-let users= {};
+let users = {};
 function generateRoomCode() {
   let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let result = "";
@@ -166,5 +213,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}`);
+  console.log(`Server running at http://${hostname}:${port}`);
 });

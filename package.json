@@ -1,9 +1,14 @@
 {
+  "scripts": {
+    "start": "cd app && node server.js"
+  },
   "dependencies": {
     "@api/yelp-developers": "file:.api/apis/yelp-developers",
     "axios": "^1.7.7",
     "body-parser": "^1.20.3",
+    "ejs": "^3.1.10",
     "express": "^4.21.1",
+    "express-session": "^1.18.1",
     "pg": "^8.13.1",
     "socket": "^0.14.12",
     "socket.io": "^4.8.1",
