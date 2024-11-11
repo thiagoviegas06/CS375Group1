@@ -44,6 +44,16 @@ app.get('/', (req, res) => {
   res.sendFile('index.html');
 });
 
+app.get("/myprofile", async (req, res) => {
+  if (!req.session.authenticated) {
+    return res.sendFile("public/profile_logged_out.html", { root: __dirname });
+  }
+  const cookieJSON = store["sessions"][req.sessionID];
+  const cookie = JSON.parse(cookieJSON);
+  const picPath = `profile_pic/${cookie.user}.jpg`;
+  return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
+})
+
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
 
