@@ -28,7 +28,7 @@ loginForm.addEventListener('submit', async (event) => {
         const result = await response.json();
 
         if (response.ok) {
-            window.location.href = '/';
+            window.location.href = '/create.html';
         } else {
             errorMessage.textContent = result.message;
         }
