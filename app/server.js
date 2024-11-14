@@ -92,10 +92,19 @@ app.get("/preferences-api", (req, res) => {
     }
   };
 
+  // Check if the options exist within the local database 
+  // If they do, return the data from the database
+  // search by city, cuisine, price for if exists in database
+
+
+
+
+  // If they do not, make the API request and store the data in the database
+  let business;
   // First Yelp API request
   axios.request(options)
     .then(yelpRes => {
-      let business = yelpRes.data.businesses;
+      business = yelpRes.data.businesses;
 
       for (let a of business) {
         let name = a.name;
