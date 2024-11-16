@@ -2,6 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const session = require('express-session');
 const bodyParser = require('body-parser');
+const multer = require('multer');
+const upload = multer({dest: "public/profile_pic/"});
 const store = new session.MemoryStore();
 const app = express();
 const { UserTable, RestaurantTable, VotingTable } = require('./models/tables.js');
@@ -141,6 +143,10 @@ app.post('/vote', async (req, res) => {
     return res.sendStatus(500);
   }
 });
+
+app.post('/profile_pic', upload.single('file'), (req, res) => {
+  res.sendStatus(201);
+})
 
 let rooms = {
   roomId: {
