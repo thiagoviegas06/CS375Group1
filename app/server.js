@@ -217,6 +217,20 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('submitCurrentVotes', (data) => {
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+    const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
+  
+    room.votes[username] = data.votes;
+
+    const results = calculateResults(room.votes, room.restaurants);
+  
+    for (let s of Object.values(room.sockets)) {
+      s.emit('votingResults', { results });
+    }
+  });
+
   socket.on('submitVotes', (data) => {
     const roomId = socket.roomId;
     const room = rooms[roomId];

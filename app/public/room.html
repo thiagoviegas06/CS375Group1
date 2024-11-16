@@ -12,6 +12,7 @@
   <div id="usersList"></div>
   
   <div id="votingSection"></div>
+  <div id="votingResults"></div>
 
   <script src="/socket.io.js"></script>
 
@@ -59,6 +60,7 @@
       let submittedVote = false;
   
       function displayRestaurant(index) {
+        socket.emit("submitCurrentVotes", { votes: userVotes })
         if (index >= restaurants.length && !submittedVote) {
           socket.emit('submitVotes', { votes: userVotes });
           document.getElementById('votingSection').innerHTML = "<p>Voting completed. Thank you!</p>";
@@ -112,7 +114,7 @@
 
     socket.on('votingResults', (data) => {
       const results = data.results;
-      let resultsSection = document.getElementById('votingSection');
+      let resultsSection = document.getElementById('votingResults');
       resultsSection.innerHTML = '<h2>Voting Results</h2>';
 
       let resultsList = document.createElement('ul');
