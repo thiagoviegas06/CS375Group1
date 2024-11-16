@@ -4,7 +4,7 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const store = new session.MemoryStore();
 const app = express();
-const { UserTable } = require('./models/tables.js');
+const { UserTable, RestaurantTable, VotingTable } = require('./models/tables.js');
 const path = require('path');
 const port = 3000;
 const hostname = 'localhost';
@@ -38,8 +38,6 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const userTable = new UserTable();
-
 app.get('/', (req, res) => {
   res.sendFile('index.html');
 });
@@ -50,21 +48,22 @@ app.get("/myprofile", async (req, res) => {
   }
   const cookieJSON = store["sessions"][req.sessionID];
   const cookie = JSON.parse(cookieJSON);
-  const picPath = `profile_pic/${cookie.user}.jpg`;
-  return res.render('profile_logged_in.html', { name: cookie.user, pic: picPath });
+  const picPath = `profile_pic/${cookie.username}.jpg`;
+  const favs = await VotingTable.getVotes(cookie.pid, 3);
+  return res.render('profile_logged_in.html', { name: cookie.username, pic: picPath, favs: favs });
 })
 
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const existingUser = await userTable.findByUsername(username);
+    const existingUser = await UserTable.findByUsername(username);
 
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Username already exists. Please choose another one.' });
     }
 
-    await userTable.insert(username, password);
+    await UserTable.insert(username, password);
     res.json({ success: true, message: 'User registered successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -75,7 +74,7 @@ app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const user = await userTable.findByUsername(username);
+    const user = await UserTable.findByUsername(username);
     if (req.session.authenticated) {
       res.json({ success: true, message: 'Already logged in' });
     }
@@ -84,6 +83,7 @@ app.post('/login', async (req, res) => {
         if (password === user.password) {
           req.session.authenticated = true;
           req.session.username = username;
+          req.session.pid = user.pid;
           req.session.save()
           res.json({ success: true, message: 'Login successful' });
         } else {
@@ -95,6 +95,7 @@ app.post('/login', async (req, res) => {
     }
 
   } catch (error) {
+    console.log(error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -110,6 +111,34 @@ app.get('/get-username', (req, res) => {
     res.json({ success: true, username: req.session.username });
   } else {
     res.json({ success: false, message: 'No username found in session' });
+  }
+});
+
+app.post('/restaurant', async (req, res) => {
+  try {
+    const restaurantName = req.body.restaurant;
+    await RestaurantTable.insert(restaurantName);
+    return res.sendStatus(200);
+  }
+  catch (_) {
+    return res.sendStatus(500);
+  }
+});
+
+app.post('/vote', async (req, res) => {
+  if (!req.session.authenticated) {
+    return res.sendStatus(200);
+  }
+  try {
+    const username = req.session.username;
+    const user = await UserTable.findByUsername(username);
+    const id = user.pid;
+    console.log(user);
+    await VotingTable.incrementVote(id, req.body.restaurant);
+    return res.sendStatus(200);
+  }
+  catch (_) {
+    return res.sendStatus(500);
   }
 });
 
@@ -202,16 +231,16 @@ io.on('connection', (socket) => {
     const roomId = socket.roomId;
     const room = rooms[roomId];
     const user = room.users.find(u => u.socketId === socket.id);
-  
+
     if (!user || !user.isPartyLeader) {
       return;
     }
-  
+
     room.votingActive = true;
     room.votes = {};
     room.usersFinishedVoting = [];
     room.restaurants = getDummyRestaurants();
-  
+
     for (let s of Object.values(room.sockets)) {
       s.emit('startVoting', { restaurants: room.restaurants });
     }
@@ -221,15 +250,15 @@ io.on('connection', (socket) => {
     const roomId = socket.roomId;
     const room = rooms[roomId];
     const username = socket.handshake.session.username || 'GUEST';
-  
+
     room.votes[username] = data.votes;
     if (!room.usersFinishedVoting.includes(username)) {
       room.usersFinishedVoting.push(username);
     }
-  
+
     if (room.usersFinishedVoting.length === room.users.length) {
       const results = calculateResults(room.votes, room.restaurants);
-  
+
       for (let s of Object.values(room.sockets)) {
         s.emit('votingResults', { results });
       }
@@ -252,9 +281,9 @@ function calculateResults(votes, restaurants) {
 
 function getDummyRestaurants() {
   return [
-    { id: 1, name: 'Restaurant A', picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop"},
+    { id: 1, name: 'Restaurant A', picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop" },
     { id: 2, name: 'Restaurant B', picture: "https://pbs.twimg.com/media/GDQTNcgXMAAbTcI.jpg:large" },
-    { id: 3, name: 'Restaurant C', picture: "https://i.giphy.com/2zUn8hAwJwG4abiS0p.webp"},
+    { id: 3, name: 'Restaurant C', picture: "https://i.giphy.com/2zUn8hAwJwG4abiS0p.webp" },
     { id: 4, name: 'Restaurant D', picture: "https://media.tenor.com/v6j3qu9ZmMIAAAAM/funny-cat.gif" }
   ];
 }

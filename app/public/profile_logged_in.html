@@ -17,8 +17,14 @@
                 <span><%= name %></span>
             </div>
             <div>
-                <label>Bio:</label>
-                <span>Passionate about CS 375 group one</span>
+                <label>
+                    My top-three places
+                </label>
+                <ul>
+                    <% for (var i = 0 ; i < favs.length ; i++) {%>
+                        <li><%= favs[i].res_name %></li>
+                    <%}%>
+                </ul>
             </div>
             <div>
                 <a href="/create.html"><label>Back</label></a>
