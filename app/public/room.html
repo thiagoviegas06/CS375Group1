@@ -16,6 +16,26 @@
   <script src="/socket.io.js"></script>
 
   <script>
+    function detectPageRefresh() {
+      let navigationType;
+
+      if (performance.getEntriesByType('navigation').length > 0) {
+        navigationType = performance.getEntriesByType('navigation')[0].type;
+      } else {
+        navigationType = performance.navigation.type;
+        if (navigationType === 1) {
+          navigationType = 'reload';
+        } else {
+          navigationType = 'navigate';
+        }
+      }
+
+      if (navigationType === 'reload') {
+        window.location.href = '/';
+      }
+    }
+    detectPageRefresh();
+
     let socket = io();
     let usersList = document.getElementById("usersList");
     let startVoteButton = document.getElementById("startVote");
