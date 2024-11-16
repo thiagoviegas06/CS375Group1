@@ -171,12 +171,17 @@ function checkVotingDone(roomId) {
   }
 
   if (room.usersFinishedVoting.length === room.users.length) {
-    const results = calculateResults(room.votes, room.restaurants);
-  
-    for (let s of Object.values(room.sockets)) {
-      s.emit('votingResults', { results });
-    }
+    updateVotingResults(roomId)
     room.votingActive = false;
+  }
+}
+
+function updateVotingResults(roomId) {
+  const room = rooms[roomId];
+  const results = calculateResults(room.votes, room.restaurants);
+
+  for (let s of Object.values(room.sockets)) {
+    s.emit('votingResults', { results });
   }
 }
 
@@ -259,8 +264,10 @@ io.on('connection', (socket) => {
       }
 
       delete rooms[roomId].sockets[socket.id];
+
       updateRoomUsers(roomId);
       checkVotingDone(roomId);
+      updateVotingResults(roomId);
     }
 
     console.log(`Socket ${socket.id} disconnected`);
@@ -294,9 +301,7 @@ io.on('connection', (socket) => {
 
     const results = calculateResults(room.votes, room.restaurants);
   
-    for (let s of Object.values(room.sockets)) {
-      s.emit('votingResults', { results });
-    }
+    updateVotingResults(roomId)
   });
 
   socket.on('submitVotes', (data) => {
