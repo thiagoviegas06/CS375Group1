@@ -3,11 +3,14 @@ const axios = require('axios');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const multer = require('multer');
-const upload = multer({dest: "public/profile_pic/"});
 const store = new session.MemoryStore();
 const app = express();
 const { UserTable, RestaurantTable, VotingTable } = require('./models/tables.js');
 const path = require('path');
+const fs = require('fs');
+const upload = multer({
+  dest: path.join(__dirname, 'public/profile_pic'),
+});
 const port = 3000;
 const hostname = 'localhost';
 let http = require("http");
@@ -36,8 +39,6 @@ io.use(sharedsession(sessionMiddleware, {
   autoSave: true,
 }));
 
-const userTable = new UserTable();
-
 app.get('/', (req, res) => {
   if (req.session && req.session.authenticated) {
     res.redirect('/create.html');
@@ -54,11 +55,26 @@ app.get("/myprofile", async (req, res) => {
   if (!req.session.authenticated) {
     return res.sendFile("public/profile_logged_out.html", { root: __dirname });
   }
+
+  const profilePicDir = path.join(__dirname, 'public', 'profile_pic');
   const cookieJSON = store["sessions"][req.sessionID];
   const cookie = JSON.parse(cookieJSON);
-  const picPath = `profile_pic/${cookie.user}.jpg`;
   const favs = await VotingTable.getVotes(cookie.pid, 3);
-  return res.render('profile_logged_in.html', { name: req.session.username, pic: picPath });
+  fs.readdir(profilePicDir, (err, files) => {
+    if (err) {
+      console.error('Error reading profile_pic directory:', err);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    const regex = new RegExp(`^${cookie.username}\\.(jpg|jpeg|png|gif|bmp)$`, 'i');
+    const matchedFile = files.find((file) => regex.test(file));
+    if (matchedFile) {
+      picPath = `/profile_pic/${matchedFile}`;
+    } else {
+      picPath = `/profile_pic/default.png`;
+    }
+    return res.render('profile_logged_in.html', { name: req.session.username, pic: picPath, favs: favs });
+  });
 })
 
 app.post('/signup', async (req, res) => {
@@ -156,7 +172,6 @@ app.post('/vote', async (req, res) => {
     const username = req.session.username;
     const user = await UserTable.findByUsername(username);
     const id = user.pid;
-    console.log(user);
     await VotingTable.incrementVote(id, req.body.restaurant);
     return res.sendStatus(200);
   }
@@ -166,8 +181,28 @@ app.post('/vote', async (req, res) => {
 });
 
 app.post('/profile_pic', upload.single('file'), (req, res) => {
-  res.sendStatus(201);
-})
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  const userName = req.session.username;
+  const ext = path.extname(req.file.originalname);
+  const oldPath = req.file.path;
+  const newPath = path.join(req.file.destination, `${userName}${ext}`);
+
+  fs.rename(oldPath, newPath, (err) => {
+    if (err) {
+      console.error('File renaming error:', err);
+      return res.status(500).json({ error: 'File renaming failed' });
+    }
+
+    res.status(201).json({
+      message: 'File uploaded successfully',
+      filePath: `/profile_pic/${userName}${ext}`,
+    });
+  });
+});
+
 
 let rooms = {
   roomId: {
