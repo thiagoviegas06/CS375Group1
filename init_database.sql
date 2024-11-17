@@ -14,11 +14,6 @@ CREATE TABLE restuarants (
     pid SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     city VARCHAR(255) NOT NULL,
-    address VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(255) NOT NULL,
-    rating DECIMAL(2,1) NOT NULL,
-    price INT NOT NULL,
     cuisine VARCHAR(255) NOT NULL,
-    website VARCHAR(255) NOT NULL,
-    image VARCHAR(255) NOT NULL
+    image BLOB NOT NULL
 );

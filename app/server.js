@@ -9,6 +9,7 @@ let http = require("http");
 let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
+app.use(express.static('public'));
 
 //apiFiles
 let apiFile = require("../env.json");
@@ -113,12 +114,15 @@ app.get("/preferences", (req, res) =>{
   res.sendFile(__dirname + "/public/preferences.html");
 });
 
-app.get("/preferences-api", (req, res) => {
-  let cuisine = req.query.cuisine;
-  let price = req.query.price;
-  let city = req.query.city;
-  let radius = req.query.radius;
+function getRestuarantFromDB(city, cuisine, price) {
+  // Return data from database
+}
 
+function storeRestuarantInDB(data) {
+  // Store data in database
+}
+
+function callYelpAndGoogle(city, cuisine, price, radius) {
   let google = [];
   let json_response = {};
 
@@ -132,16 +136,6 @@ app.get("/preferences-api", (req, res) => {
       Authorization: `Bearer ${yelpKey}`
     }
   };
-
-  // Check if the options exist within the local database 
-  // If they do, return the data from the database
-  // search by city, cuisine, price for if exists in database
-
-
-
-
-  // If they do not, make the API request and store the data in the database
-  let business;
   // First Yelp API request
   axios.request(options)
     .then(yelpRes => {
@@ -213,17 +207,33 @@ app.get("/preferences-api", (req, res) => {
           const imageDataUrl = `data:image/jpeg;base64,${base64Image}`;
 
           // Return final response including Yelp data and image
-          res.json({ yelp: json_response, google: photoArray, image: imageDataUrl });
+          //console.log({ yelp: json_response, google: photoArray, image: imageDataUrl });
+          return({ yelp: json_response, google: photoArray, image: imageDataUrl });
         });
     })
     .catch(err => console.error("Error in Yelp API request:", err.response.data));
+
+}
+
+app.get("/preferences-api", (req, res) => {
+  let cuisine = req.query.cuisine;
+  let price = req.query.price;
+  let city = req.query.city;
+  let radius = req.query.radius;
+
+  if(!getRestuarantFromDB(city, cuisine, price) == null) {
+    console.log("Why did this run");
+    res.json(getRestuarantFromDB(city, cuisine, price));
+  } else {
+    let results = callYelpAndGoogle(city, cuisine, price, radius);
+    console.log(results);
+    storeRestuarantInDB(results);
+    res.json(results);
+  }
+  
 });
 
 
-
-//
-app.post("/create", (req, res) => {
-  let data = req.body;
 
 // if you need to do things like associate a socket with a logged in user, see
 // https://socket.io/how-to/deal-with-cookies
