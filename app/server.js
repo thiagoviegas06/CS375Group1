@@ -36,13 +36,19 @@ io.use(sharedsession(sessionMiddleware, {
   autoSave: true,
 }));
 
+const userTable = new UserTable();
+
+app.get('/', (req, res) => {
+  if (req.session && req.session.authenticated) {
+    res.redirect('/create.html');
+  } else {
+    res.sendFile('index.html', { root: __dirname + '/public' });
+  }
+});
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.get('/', (req, res) => {
-  res.sendFile('index.html');
-});
 
 app.get("/myprofile", async (req, res) => {
   if (!req.session.authenticated) {
@@ -50,9 +56,9 @@ app.get("/myprofile", async (req, res) => {
   }
   const cookieJSON = store["sessions"][req.sessionID];
   const cookie = JSON.parse(cookieJSON);
-  const picPath = `profile_pic/${cookie.username}.jpg`;
+  const picPath = `profile_pic/${cookie.user}.jpg`;
   const favs = await VotingTable.getVotes(cookie.pid, 3);
-  return res.render('profile_logged_in.html', { name: cookie.username, pic: picPath, favs: favs });
+  return res.render('profile_logged_in.html', { name: req.session.username, pic: picPath });
 })
 
 app.post('/signup', async (req, res) => {
@@ -102,15 +108,30 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ success: false, message: 'Logout failed' });
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
+});
+
 app.post('/guest-username', (req, res) => {
   const username = req.body.username;
-  req.session.username = username;
+  req.session.authenticated = true;
+  req.session.guestname = username;
   req.session.save()
+
+  res.json({ success: true, message: 'Guest username successful' });
 });
 
 app.get('/get-username', (req, res) => {
   if (req.session.username) {
-    res.json({ success: true, username: req.session.username });
+    res.json({ success: true, username: req.session.username});
+  } else if (req.session.guestname) {
+    res.json({ success: true, username: req.session.guestname});
   } else {
     res.json({ success: false, message: 'No username found in session' });
   }
@@ -179,11 +200,37 @@ function updateRoomUsers(roomId) {
   }
 }
 
+function checkVotingDone(roomId) {
+  const room = rooms[roomId];
+
+  if (!room.votingActive) {
+    return;
+  }
+
+  if (room.usersFinishedVoting.length === room.users.length) {
+    updateVotingResults(roomId)
+    room.votingActive = false;
+  }
+}
+
+function updateVotingResults(roomId) {
+  const room = rooms[roomId];
+  const results = calculateResults(room.votes, room.restaurants);
+
+  for (let s of Object.values(room.sockets)) {
+    s.emit('votingResults', { results });
+  }
+}
+
 app.post('/create', (req, res) => {
   let roomId = generateRoomCode();
   rooms[roomId] = {
     users: [],
     sockets: {},
+    votingActive: false,
+    votes: {},
+    usersFinishedVoting: [],
+    restaurants: []
   };
   return res.json({ roomId });
 });
@@ -201,7 +248,7 @@ io.on('connection', (socket) => {
 
   socket.on('joinRoom', (data) => {
     const { roomId } = data;
-    const username = socket.handshake.session.username || 'GUEST';
+    const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
 
     if (!rooms.hasOwnProperty(roomId)) {
       socket.emit('error', { message: 'Room does not exist.' });
@@ -219,17 +266,47 @@ io.on('connection', (socket) => {
       isPartyLeader: isPartyLeader,
     });
 
+    const room = rooms[roomId];
+    if (room.votingActive) {
+      socket.emit('startVoting', { restaurants: room.restaurants });
+    }
+
     updateRoomUsers(roomId);
   });
 
 
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
+
     if (roomId && rooms[roomId]) {
-      rooms[roomId].users = rooms[roomId].users.filter(user => user.socketId !== socket.id);
+      const userIndex = rooms[roomId].users.findIndex(user => user.socketId === socket.id);
+      const username = rooms[roomId].users[userIndex].username;
+      if (userIndex !== -1) {
+        rooms[roomId].users.splice(userIndex, 1);
+      }
+
+      if (rooms[roomId].votes[username]) {
+        delete rooms[roomId].votes[username];
+      }
+
+      let index = rooms[roomId].usersFinishedVoting.indexOf(username);
+      if (index !== -1) {
+        rooms[roomId].usersFinishedVoting.splice(index, 1);
+      }
+
+      if (!rooms[roomId].users.some(user => user.isPartyLeader)) {
+        if (rooms[roomId].users.length > 0) {
+          rooms[roomId].users[0].isPartyLeader = true;
+        }
+      }
+
       delete rooms[roomId].sockets[socket.id];
+
       updateRoomUsers(roomId);
+      checkVotingDone(roomId);
+      updateVotingResults(roomId);
     }
+
     console.log(`Socket ${socket.id} disconnected`);
   });
 
@@ -252,25 +329,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('submitCurrentVotes', (data) => {
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+    const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
+  
+    room.votes[username] = data.votes;
+
+    const results = calculateResults(room.votes, room.restaurants);
+  
+    updateVotingResults(roomId)
+  });
+
   socket.on('submitVotes', (data) => {
     const roomId = socket.roomId;
     const room = rooms[roomId];
-    const username = socket.handshake.session.username || 'GUEST';
-
+    const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
     room.votes[username] = data.votes;
     if (!room.usersFinishedVoting.includes(username)) {
       room.usersFinishedVoting.push(username);
     }
-
-    if (room.usersFinishedVoting.length === room.users.length) {
-      const results = calculateResults(room.votes, room.restaurants);
-
-      for (let s of Object.values(room.sockets)) {
-        s.emit('votingResults', { results });
-      }
-      room.votingActive = false;
-    }
+    checkVotingDone(roomId);
   });
+  
 });
 
 function calculateResults(votes, restaurants) {
