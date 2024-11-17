@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Demo</title>
 </head>
+
 <body>
   <input id="input">
   <button id="send">Send</button>
   <button id="startVote" style="display: none;">Start Vote</button>
   <div id="usersList"></div>
-  
+
   <div id="votingSection"></div>
   <div id="votingResults"></div>
 
@@ -41,7 +43,7 @@
     let usersList = document.getElementById("usersList");
     let startVoteButton = document.getElementById("startVote");
     let clientUsername = null;
-  
+
     fetch('/get-username')
       .then(response => response.json())
       .then(data => {
@@ -49,36 +51,36 @@
           clientUsername = data.username;
         }
       });
-  
+
     let pathParts = window.location.pathname.split("/");
     let roomId = pathParts[pathParts.length - 1];
-  
+
     socket.emit('joinRoom', { "roomId": roomId });
-  
+
     socket.on('updateUserList', (userList) => {
       usersList.innerHTML = '';
-  
+
       userList.forEach(user => {
         let listItem = document.createElement('li');
         listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
         usersList.appendChild(listItem);
-  
+
         if (user.isPartyLeader && user.username === clientUsername) {
           startVoteButton.style.display = 'inline-block';
         }
       });
     });
-  
+
     startVoteButton.addEventListener("click", () => {
       socket.emit("startVoting", { roomId: roomId });
     });
-  
+
     socket.on('startVoting', (data) => {
       const restaurants = data.restaurants;
       let currentIndex = 0;
       let userVotes = {};
       let submittedVote = false;
-  
+
       function displayRestaurant(index) {
         socket.emit("submitCurrentVotes", { votes: userVotes })
         if (index >= restaurants.length && !submittedVote) {
@@ -87,48 +89,66 @@
           submittedVote = true;
           return;
         }
-
         const restaurant = restaurants[index];
+
+        //Making sure the restaurant exists in the database
+        fetch('/restaurant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ "restaurant": restaurant.name })
+        });
+
         let votingSection = document.getElementById('votingSection');
         votingSection.innerHTML = '';
-  
+
         let restaurantDiv = document.createElement('div');
-  
+
         let nameElement = document.createElement('h2');
         nameElement.textContent = restaurant.name;
-  
+
         let pictureElement = document.createElement('img');
         pictureElement.src = restaurant.picture;
         pictureElement.alt = restaurant.name;
         pictureElement.style.maxWidth = '400px';
         pictureElement.style.height = 'auto';
-  
+
         let yesButton = document.createElement('button');
         yesButton.textContent = 'Yes';
-  
+
         let noButton = document.createElement('button');
         noButton.textContent = 'No';
-  
+
         yesButton.addEventListener('click', () => {
           currentIndex++;
           userVotes[restaurant.name] = 1;
+
+          //updating personal preference
+          fetch('/vote', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "restaurant": restaurant.name })
+          });
           displayRestaurant(currentIndex);
         });
-  
+
         noButton.addEventListener('click', () => {
           currentIndex++;
           userVotes[restaurant.name] = -1;
           displayRestaurant(currentIndex);
         });
-  
+
         restaurantDiv.appendChild(nameElement);
         restaurantDiv.appendChild(pictureElement);
         restaurantDiv.appendChild(yesButton);
         restaurantDiv.appendChild(noButton);
-  
+
         votingSection.appendChild(restaurantDiv);
       }
-  
+
       displayRestaurant(currentIndex);
     });
 
@@ -150,6 +170,7 @@
       resultsSection.appendChild(resultsList);
     });
   </script>
-  
+
 </body>
+
 </html>
