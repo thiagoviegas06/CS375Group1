@@ -233,6 +233,19 @@ app.get("/preferences-api", (req, res) => {
   
 });
 
+// Takes the points from the first voting round to determine the winnner.
+// If there is a tie, randomly select a winner.
+// This is assuming we are going to have 2 rounds of voting and is only in case of tie there too
+function tieBreaker(Restuarant1, Restuarant2, pointsRestuarant1, pointsRestuarant2) {
+  if (pointsRestuarant1 > pointsRestuarant2) {
+    return Restuarant1;
+  } else if (pointsRestuarant1 < pointsRestuarant2) {
+    return Restuarant2;
+  }
+  return Math.random() < 0.5 ? Restuarant1 : Restuarant2;
+  
+}
+
 
 
 // if you need to do things like associate a socket with a logged in user, see
