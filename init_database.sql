@@ -15,5 +15,6 @@ CREATE TABLE restuarants (
     name VARCHAR(255) NOT NULL,
     city VARCHAR(255) NOT NULL,
     cuisine VARCHAR(255) NOT NULL,
+    price INT NOT NULL,
     image BLOB NOT NULL
 );

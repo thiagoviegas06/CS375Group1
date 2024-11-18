@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 const { UserTable } = require('./models/tables.js');
+const { RestuarantTable } = require('./models/tables.js');
 const path = require('path');
 const port = 3000;
 const hostname = 'localhost';
@@ -21,6 +22,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
 const userTable = new UserTable();  // Table to interact with database
+const restuarantTable = new RestuarantTable();  // Table to interact with database
 
 app.get('/', (req, res) => {
   res.sendFile('index.html');
@@ -118,11 +120,14 @@ function getRestuarantFromDB(city, cuisine, price) {
   // Return data from database
 }
 
-function storeRestuarantInDB(data) {
+function storeRestuarantInDB(name, city, cuisine, price, image) {
   // Store data in database
+  restuarantTable.insert(name, city, cuisine, price, image);
 }
 
-function callYelpAndGoogle(city, cuisine, price, radius) {
+
+//This is not currently working. Need to fix this before merging. 
+async function callYelpAndGoogle(city, cuisine, price, radius) {
   let google = [];
   let json_response = {};
 
@@ -207,7 +212,9 @@ function callYelpAndGoogle(city, cuisine, price, radius) {
           const imageDataUrl = `data:image/jpeg;base64,${base64Image}`;
 
           // Return final response including Yelp data and image
-          //console.log({ yelp: json_response, google: photoArray, image: imageDataUrl });
+          //console.log({ yelp: json_response, google: photoArray, image: imageDataUrl });]
+          console.log(json_response.name);
+          //storeRestuarantInDB(json_response.name, city, cuisine, price, imageDataUrl);
           return({ yelp: json_response, google: photoArray, image: imageDataUrl });
         });
     })
