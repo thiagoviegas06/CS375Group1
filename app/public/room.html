@@ -34,10 +34,15 @@
       }
 
       if (navigationType === 'reload') {
+
         window.location.href = '/';
       }
     }
     detectPageRefresh();
+
+    window.addEventListener('beforeunload', () => {
+      socket.disconnect();
+    });
 
     let socket = io();
     let usersList = document.getElementById("usersList");
