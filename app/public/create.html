@@ -23,12 +23,18 @@
         profileButton.addEventListener("click", () => {
             window.location = "myProfile";
         })
+
+        button,addEventListener("click", async () => {
+            window.location.href = `preferences.html`;
+        });
+        /*
         button.addEventListener("click", async () => {
             let response = await fetch("/create", { method: "POST" })
             let { roomId } = await response.json();
             // will redirect to new chatroom immediately
             window.location = `/room/${roomId}`;
         });
+        */
         joinButton.addEventListener("click", async () => {
             // will redirect to new chatroom immediately
             window.location.href = `join.html`;

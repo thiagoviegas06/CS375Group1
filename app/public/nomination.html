@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Table Example</title>
+    <style>
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Restaurants</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Restaurant</th>
+                <th>Cuisine</th>
+                <th>Rating</th>
+                <th>Price</th>
+                <th>Address</th>
+            </tr>
+        </thead>
+        <tbody id="tbody">
+            
+        </tbody>
+    </table>
+
+    <script>
+
+        /*
+            "businesses": [
+        {
+            "id": "9PZxjhTIU7OgPIzuGi89Ew",
+            "alias": "el-vez-philadelphia",
+            "name": "El Vez", 
+            "image_url": "https://s3-media3.fl.yelpcdn.com/bphoto/Wdr5Ucm4n0HtR-gDryO09w/o.jpg",
+            "is_closed": false,
+            "url": "https://www.yelp.com/biz/el-vez-philadelphia?adjust_creative=eIiAokovzCS1KVzhe0fPxg&utm_campaign=yelp_api_v3&utm_medium=api_v3_business_search&utm_source=eIiAokovzCS1KVzhe0fPxg",
+            "review_count": 3721,
+            "categories": [
+                {
+                    "alias": "mexican",
+                    "title": "Mexican"
+                },
+                {
+                    "alias": "breakfast_brunch",
+                    "title": "Breakfast & Brunch"
+                }
+            ],
+            "rating": 4,
+            "coordinates": {
+                "latitude": 39.94981,
+                "longitude": -75.16176
+            },
+            "transactions": [
+                "delivery"
+            ],
+            "price": "$$",
+            "location": {
+                "address1": "121 S 13th St",   
+                "address2": "",
+                "address3": "",
+                "city": "Philadelphia",
+                "zip_code": "19107",
+                "country": "US",
+                "state": "PA",
+                "display_address": [   
+                    "121 S 13th St",
+                    "Philadelphia, PA 19107"
+                ]
+            },
+            "phone": "+12159289800",
+            "display_phone": "(215) 928-9800",
+            "distance": 6948.761946695736,
+            "business_hours": [
+                {
+                    "open": [
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "2200",
+                            "day": 0
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "2200",
+                            "day": 1
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "2200",
+                            "day": 2
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "2200",
+                            "day": 3
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "0000",
+                            "day": 4
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "0000",
+                            "day": 5
+                        },
+                        {
+                            "is_overnight": false,
+                            "start": "1130",
+                            "end": "2200",
+                            "day": 6
+                        }
+                    ],
+                    "hours_type": "REGULAR",
+                    "is_open_now": true
+                }
+            ],
+            "attributes": {
+                "business_temp_closed": null,
+                "menu_url": "https://elvezrestaurant.com/menus/dinner/?utm_source=Yelp&utm_medium=Menu&utm_campaign=Enhanced%20Listings",
+                "open24_hours": null,
+                "waitlist_reservation": null
+            }
+        },
+            }
+        */
+        let tbody = document.getElementById("tbody");
+        let sample_obj = {
+            restaurant_a: ["mexican", 4.9, "$$", "817 Brighton Rd, Cherry Hill, NJ"],
+            restaurant_b: ["french", 4.7, "$$$", "3600 Market St, Philadelphia, PA"],
+            restaurant_c: ["american", 4.0, "$$$$", "931 Haddonfield Rd, Cherry Hill, NJ 08002"],
+            restaurant_d: ["brazilian", 5.0, "$$$", "1901 John F Kennedy Blvd, Philadelphia, PA 19103"]
+        };
+        
+        let url = "/nominations-call"
+
+        let business = []
+
+        //maybe  just use cheap data from yelp
+        fetch(url)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((body) => {
+                const businesses = body.businesses; // Use `const` for safety and proper scope
+
+                let rowId = 1; // Start ID counter at 1
+
+                businesses.forEach((bus) => {
+                    const {
+                        name,
+                        coordinates: { latitude: lat, longitude: long },
+                        categories,
+                        rating,
+                        price,
+                        location: { display_address },
+                    } = bus;
+
+                    const cat = categories[0]?.title || "N/A"; // Safely access category
+                    const combined_loc = display_address.join(", "); // Format address as a string
+
+                    const rowData = [rowId++, name, cat, rating, price, combined_loc]; // Add ID to the start of the row data
+
+                    // Create a new table row
+                    const newRow = document.createElement("tr");
+
+                    // Dynamically create and append cells
+                    rowData.forEach((data) => {
+                        const cell = document.createElement("td");
+                        cell.textContent = data;
+                        newRow.appendChild(cell);
+                    });
+
+                    // Append the new row to the table body
+                    tbody.appendChild(newRow);
+                });
+            })
+            .catch((error) => {
+                console.error('Fetch error:', error);
+            });
+
+    </script>
+</body>
+</html>
