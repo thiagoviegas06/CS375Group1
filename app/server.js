@@ -407,7 +407,7 @@ app.post('/create', (req, res) => {
 });
 
 app.get('/nominations-call', (req, res) => {
-  
+
   const dummyCall = {
     method: 'GET',
     url: `https://api.yelp.com/v3/businesses/search?location=philadelphia&price=2&limit=10&categories=mexican`,
@@ -428,6 +428,8 @@ app.get('/nominations-call', (req, res) => {
       });
     });
 });
+
+
 
 
 app.get('/room/:roomId', (req, res) => {
