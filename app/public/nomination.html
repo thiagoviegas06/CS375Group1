@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,22 +11,28 @@
             border-collapse: collapse;
             margin: 20px auto;
         }
-        th, td {
+
+        th,
+        td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
         }
+
         th {
             background-color: #f4f4f4;
         }
+
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+
         tr:hover {
             background-color: #f1f1f1;
         }
     </style>
 </head>
+
 <body>
     <h1 style="text-align: center;">Restaurants</h1>
     <table>
@@ -37,18 +44,70 @@
                 <th>Rating</th>
                 <th>Price</th>
                 <th>Address</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="tbody">
-            
+
         </tbody>
     </table>
 
+    <form id="address-form" action="" method="get" autocomplete="off">
+        <label class="full-field">
+            <!-- Avoid the word "address" in id, name, or label text to avoid browser autofill from conflicting with Place Autocomplete. Star or comment bug https://crbug.com/587466 to request Chromium to honor autocomplete="off" attribute. -->
+            <span class="form-label">Add restaurant</span>
+            <input id="res-address" name="res-address" required autocomplete="off" />
+        </label>
+    </form>
     <script>
+        /* Table */
+        const priceMapping = {
+            0: "",
+            1: "$",
+            2: "$$",
+            3: "$$$",
+            4: "$$$$"
+        };
+        const business = [];
+        let url = "/nominations-call";
+        let rowId = 1;
 
-        let tbody = document.getElementById("tbody");
-        let url = "/nominations-call"
-        let business = []
+        const renderTable = () => {
+            const tbody = document.getElementById("tbody");
+
+            while (tbody.firstChild) {
+                tbody.removeChild(tbody.firstChild);
+            };
+
+            business.map((row, idx) => {
+                const newRow = document.createElement("tr");
+
+                // Dynamically create and append cells
+                const cell = document.createElement("td");
+                cell.textContent = idx + 1;
+                newRow.appendChild(cell);
+
+                row.forEach((data) => {
+                    const cell = document.createElement("td");
+                    cell.textContent = data;
+                    newRow.appendChild(cell);
+                });
+
+                const removeCell = document.createElement("td");
+                const newButton = document.createElement("button");
+                newButton.textContent = "Delete";
+                newButton.addEventListener("click", removeRow.bind(null, idx));
+                removeCell.appendChild(newButton);
+                newRow.appendChild(removeCell);
+
+                tbody.appendChild(newRow);
+            });
+        }
+
+        const removeRow = (arrIndex) => {
+            business.splice(arrIndex, 1);
+            renderTable();
+        }
 
         //maybe  just use cheap data from yelp
         fetch(url)
@@ -60,8 +119,6 @@
             })
             .then((body) => {
                 const businesses = body.businesses; // Use `const` for safety and proper scope
-
-                let rowId = 1; // Start ID counter at 1
 
                 businesses.forEach((bus) => {
                     const {
@@ -76,29 +133,46 @@
                     const cat = categories[0]?.title || "N/A"; // Safely access category
                     const combined_loc = display_address.join(", "); // Format address as a string
 
-                    const rowData = [rowId++, name, cat, rating, price, combined_loc]; // Add ID to the start of the row data
-
-                    // Create a new table row
-                    const newRow = document.createElement("tr");
-
-                    // Dynamically create and append cells
-                    rowData.forEach((data) => {
-                        const cell = document.createElement("td");
-                        cell.textContent = data;
-                        newRow.appendChild(cell);
-                    });
-
-                    // Append the new row to the table body
-                    tbody.appendChild(newRow);
+                    const rowData = [name, cat, rating, price, combined_loc]; // Add ID to the start of the row data
+                    business.push(rowData);
                 });
+                renderTable();
             })
             .catch((error) => {
                 console.error('Fetch error:', error);
             });
 
+        /* Google Maps autocomplete */
 
-    
+        let autocomplete;
+        let address1Field;
 
+        const initAutocomplete = () => {
+            address1Field = document.querySelector("#res-address");
+            const googleMapAutoOption = {
+                componentRestrictions: { country: ["us"] },
+                fields: ["name", "formatted_address", "rating", "price_level"],
+                types: ["restaurant", "cafe"],
+            };
+            autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
+            address1Field.focus();
+            autocomplete.addListener("place_changed", fillInAddress);
+        };
+
+        const fillInAddress = () => {
+            if (business.length >= 20){
+                return;
+            }
+            const place = autocomplete.getPlace();
+            const rowData = [place.name, "idk, Google doesn't say", place.rating, priceMapping[place.price_level], place.formatted_address];
+            business.push(rowData);
+            renderTable();
+        };
+        window.initAutocomplete = initAutocomplete;
     </script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArRsGEjIoKukurm-ytwFDhD1G5A9A643c&callback=initAutocomplete&libraries=places&v=weekly"
+        defer></script>
 </body>
+
 </html>
