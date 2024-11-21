@@ -2,14 +2,17 @@
 
 /* Color Variables */
 :root {
-    --primary-color: #3498db;          /* Blue */
-    --primary-color-hover: #2980b9;    /* Darker Blue */
+    --primary-color: #ED213A;          /* Blue */
+    --primary-color-hover: #C81A2E;    /* Darker Blue */
     --secondary-color: #2ecc71;        /* Green */
     --secondary-color-hover: #27ae60;  /* Darker Green */
-    --background-color: #ecf0f1;       /* Light Grey */
-    --text-color: #2c3e50;             /* Dark Grey */
-    --error-color: #e74c3c;            /* Red */
+    --background-color: #121212;       /* Light Grey */
+    --text-color: #e0e0e0;             /* Dark Grey */
+    --error-color: #e74c3c; 
+    --accent-color: #767676;           /* Red */
 }
+
+
 
 /* Global Styles */
 * {
@@ -25,14 +28,51 @@ body, html {
     color: var(--text-color);
 }
 
-/* Container */
-.container, .login-container {
+.mainTitle{
+    background: #ED213A;  /* fallback for old browsers */
+    background: -webkit-linear-gradient(to right, #93291E, #ED213A);  /* Chrome 10-25, Safari 5.1-6 */
+    background: linear-gradient(to right, #93291E, #ED213A); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+}
+
+.mainScreen {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.mainTitle {
+    flex: 1; /* Allows the title div to take up available space */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     padding: 40px 30px;
-    background-color: #fff;
+    max-width: 60%;
+    height: 450px;
+    margin: auto;
+    margin-top: 50px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #ED213A;  /* fallback for old browsers */
+    background: -webkit-linear-gradient(to right, #93291E, #ED213A);  /* Chrome 10-25, Safari 5.1-6 */
+    background: linear-gradient(to right, #93291E, #ED213A); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+}
+
+.name{
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+}
+
+/* Container */
+.container, .login-container {
+    flex: 1; /* Allows the container div to take up available space */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 30px;
+    background-color: var(--accent-color);
     max-width: 400px;
     margin: auto;
     margin-top: 50px;
@@ -44,13 +84,17 @@ body, html {
 h1 {
     font-size: 32px;
     margin-bottom: 30px;
-    color: var(--primary-color);
+    color: var(--text-color);
+}
+
+.big{
+    font-size: 56px;
 }
 
 h2 {
     font-size: 28px;
     margin-bottom: 20px;
-    color: var(--primary-color);
+    color: var(--text-color);
 }
 
 /* Input Fields */

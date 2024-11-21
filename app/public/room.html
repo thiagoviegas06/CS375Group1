@@ -4,17 +4,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/room.css">
   <title>Demo</title>
 </head>
 
 <body>
-  <input id="input">
-  <button id="send">Send</button>
-  <button id="startVote" style="display: none;">Start Vote</button>
-  <div id="messages"></div>
-  <br>
-  <div id="usersList"></div>
+  
+  <div class="container">
+    <div id="chatRoom">
+      <div id="messages">
+      </div>
+      <input id="input" type="text" placeholder="Type your message...">
+      <button id="send">Send</button>
+    </div>
+  
+    <div id="middleColumn">
+      <div>
+        <p>Middle Section</p>
+      </div>
+    </div>
+  
+    <div id="usersList"></div>
+  </div>
 
+  <div id="votingButton">
+    <button id="startVote">Start Vote</button>
+  </div>
   <div id="votingSection"></div>
   <div id="votingResults"></div>
 
