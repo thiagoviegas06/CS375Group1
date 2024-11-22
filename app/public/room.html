@@ -160,16 +160,34 @@
         pictureElement.alt = restaurant.name;
         pictureElement.style.maxWidth = '400px';
         pictureElement.style.height = 'auto';
+        const sliderDiv = document.createElement('div');
+        sliderDiv.setAttribute("class", "slider_container");
+        const mySlider = document.createElement('input');
+        mySlider.setAttribute("type", "range");
+        mySlider.setAttribute("min", "0");
+        mySlider.setAttribute("max", "9");
+        //mySlider.setAttribute("defaultValue", "5");
+        mySlider.setAttribute("value", "5");
+        mySlider.setAttribute("class", "slider");
+        mySlider.setAttribute("id", "myRange");
+        sliderDiv.appendChild(mySlider);
+        const textTemplate = document.createElement("h2");
+        textTemplate.textContent = "Score: ";
+        const sliderInfo = document.createElement("h3");
+        sliderInfo.textContent = mySlider.value;
+        sliderDiv.appendChild(textTemplate);
+        sliderDiv.appendChild(sliderInfo);
+
+        mySlider.addEventListener("change", (event) => {
+          sliderInfo.textContent = mySlider.value;
+        })
 
         let yesButton = document.createElement('button');
-        yesButton.textContent = 'Yes';
-
-        let noButton = document.createElement('button');
-        noButton.textContent = 'No';
+        yesButton.textContent = 'Vote!';
 
         yesButton.addEventListener('click', () => {
           currentIndex++;
-          userVotes[restaurant.name] = 1;
+          userVotes[restaurant.name] = mySlider.value;
 
           //updating personal preference
           fetch('/vote', {
@@ -182,17 +200,12 @@
           displayRestaurant(currentIndex);
         });
 
-        noButton.addEventListener('click', () => {
-          currentIndex++;
-          userVotes[restaurant.name] = -1;
-          displayRestaurant(currentIndex);
-        });
-
         restaurantDiv.appendChild(nameElement);
         restaurantDiv.appendChild(pictureElement);
+        restaurantDiv.appendChild(document.createElement("br"));
+        restaurantDiv.appendChild(sliderDiv);
+        restaurantDiv.appendChild(document.createElement("br"));
         restaurantDiv.appendChild(yesButton);
-        restaurantDiv.appendChild(noButton);
-
         votingSection.appendChild(restaurantDiv);
       }
 
