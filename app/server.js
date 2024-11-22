@@ -195,6 +195,137 @@ app.get("/nomination", (_, res) => {
   res.sendFile(__dirname + "/public/nomination.html")
 });
 
+function sendYelp(pref, roomID) {
+  const options = {
+    method: 'GET',
+    url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=10&categories=${pref.cuisine}`,
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${yelpKey}`
+    }
+  };
+
+  let currentRoom = rooms.roomID;
+  if (!currentRoom) {
+    console.error(`Room with ID ${roomID} not found.`);
+    return;
+  }
+
+  axios.request(options)
+    .then((yelpRes) => {
+      let businesses = yelpRes.data.businesses;
+      let restaurantData = {}; // Dictionary to hold restaurant details
+
+      for (let business of businesses) {
+        let name = business.name;
+        let alias = business.alias;
+        let googleAlias = alias.replace(/-/g, "&");
+
+        restaurantData[name] = {
+          yelp: {
+            price: business.price,
+            rating: business.rating,
+            location: business.location,
+            phone: business.display_phone,
+            isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
+            attributes: business.attributes || {}, // Default to an empty object if undefined
+          },
+          alias: googleAlias,
+          photos: [], // Placeholder for Google photo references
+        };
+      }
+
+      // Update the currentRoom's restaurant data
+      currentRoom.restaurants = restaurantData;
+      console.log(`Updated room ${roomID} with Yelp restaurant data.`);
+    })
+    .catch((error) => {
+      console.error(`Error fetching Yelp data: ${error.message}`);
+    });
+}
+
+function sendGoogle(pref, roomID) {
+  // Retrieve restaurants from the room by roomID
+  const currentRoomRestaurants = rooms[roomID]?.restaurants;
+  if (!currentRoomRestaurants) {
+    console.error(`Room with ID ${roomID} not found or has no restaurants.`);
+    return;
+  }
+
+  // Prepare an array for promises
+  const googlePromises = [];
+
+  // Loop through the restaurants to get aliases and make Google API requests
+  for (const [name, restaurant] of Object.entries(currentRoomRestaurants)) {
+    const alias = restaurant.alias;
+    const google_url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?fields=formatted_address%2Cname%2Crating%2Copening_hours%2Cgeometry%2Cphotos&input=${alias}&inputtype=textquery&key=${googleKey}`;
+
+    // Add a promise for each Google API request
+    googlePromises.push(
+      axios
+        .request({
+          method: 'GET',
+          url: google_url,
+          headers: { accept: 'application/json' },
+        })
+        .then((res2) => {
+          const apiResponse = res2.data;
+
+          // If photos are available, add their references to the restaurant
+          if (apiResponse?.candidates?.[0]?.photos) {
+            apiResponse.candidates[0].photos.forEach((photo) => {
+              restaurant.photos.push(photo.photo_reference);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error(`Error in Google API request for ${alias}:`, err.response?.data || err.message);
+        })
+    );
+  }
+
+  // Wait for all Google API requests to complete
+  return Promise.all(googlePromises)
+    .then(() => currentRoomRestaurants)
+    .then((updatedRestaurants) => {
+      // Fetch photo data
+      const photoPromises = [];
+
+      for (const [name, restaurant] of Object.entries(updatedRestaurants)) {
+        restaurant.photos.forEach((reference) => {
+          const photoRequest = {
+            method: 'GET',
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${reference}&key=${googleKey}`,
+            responseType: 'arraybuffer',
+          };
+
+          photoPromises.push(
+            axios
+              .request(photoRequest)
+              .then((photoRes) => {
+                const base64Image = Buffer.from(photoRes.data, 'binary').toString('base64');
+                restaurant.photos = `data:image/jpeg;base64,${base64Image}`;
+              })
+              .catch((err) => {
+                console.error("Error in photo request:", err.message);
+              })
+          );
+        });
+      }
+
+      return Promise.all(photoPromises).then(() => updatedRestaurants);
+    })
+    .then((finalRestaurants) => {
+      // Handle final data
+      console.log(`Updated restaurants for room ${roomID}:`, finalRestaurants);
+      generateRestaurants(finalRestaurants); // Custom function to process the data
+      return finalRestaurants; // Optional return
+    })
+    .catch((err) => {
+      console.error("Error during Google data processing:", err.message);
+    });
+}
+
 
 
 app.get("/preferences-api", (req, res) => {
