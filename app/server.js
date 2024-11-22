@@ -588,7 +588,9 @@ function getDummyRestaurants() {
   ];
 }
 
-
+app.get("/map", (_, res)=>{
+  res.sendFile(__dirname + "/public/map.html")
+});
 
 
 server.listen(port, hostname, () => {

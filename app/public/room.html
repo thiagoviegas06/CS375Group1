@@ -4,15 +4,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/room.css">
   <title>Demo</title>
 </head>
 
 <body>
-  <input id="input">
-  <button id="send">Send</button>
-  <button id="startVote" style="display: none;">Start Vote</button>
-  <div id="usersList"></div>
+  
+  <div class="container">
+    <div id="chatRoom">
+      <div id="messages">
+      </div>
+      <input id="input" type="text" placeholder="Type your message...">
+      <button id="send">Send</button>
+    </div>
+  
+    <div id="middleColumn">
+      <div>
+        <p>Middle Section</p>
+      </div>
+    </div>
+  
+    <div id="usersList"></div>
+  </div>
 
+  <div id="votingButton">
+    <button id="startVote">Start Vote</button>
+  </div>
   <div id="votingSection"></div>
   <div id="votingResults"></div>
 
@@ -34,15 +51,45 @@
       }
 
       if (navigationType === 'reload') {
+
         window.location.href = '/';
       }
     }
     detectPageRefresh();
 
+    window.addEventListener('beforeunload', () => {
+      socket.disconnect();
+    });
+
     let socket = io();
     let usersList = document.getElementById("usersList");
     let startVoteButton = document.getElementById("startVote");
+    let button = document.getElementById("send");
+    let input = document.getElementById("input");
+    let messagesDiv = document.getElementById("messages");
     let clientUsername = null;
+
+    function appendMessage(data) {
+      let item = document.createElement("div");
+      item.textContent = `${data.username}: ${data.message}`;
+      messagesDiv.appendChild(item);
+    }
+
+    button.addEventListener("click", () => {
+      let message = input.value;
+      if (message === "") {
+        return;
+      }
+      console.log("Sending message:", message);
+      socket.emit("foo", { message });
+      input.value = "";
+      appendMessage({ username: clientUsername, message: message });
+    });
+
+    socket.on("bar", function(data) {
+      console.log("Received message:", data.message);
+      appendMessage(data);
+    });
 
     fetch('/get-username')
       .then(response => response.json())

@@ -30,6 +30,11 @@
         tr:hover {
             background-color: #f1f1f1;
         }
+
+        #map {
+            height: 400px; /* The height is 400 pixels */
+            width: 50%; /* The width is the width of the web page */
+        }
     </style>
 </head>
 
@@ -59,6 +64,8 @@
             <input id="res-address" name="res-address" required autocomplete="off" />
         </label>
     </form>
+    <h2>Locations: </h2>
+    <div id="map"></div>
     <script>
         /* Table */
         const priceMapping = {
@@ -69,8 +76,10 @@
             4: "$$$$"
         };
         const business = [];
+        
         let url = "/nominations-call";
         let rowId = 1;
+       
 
         const renderTable = () => {
             const tbody = document.getElementById("tbody");
@@ -106,24 +115,24 @@
 
         const removeRow = (arrIndex) => {
             business.splice(arrIndex, 1);
+            removeMarker(arrIndex);
             renderTable();
         }
 
-        //maybe  just use cheap data from yelp
-        fetch(url)
-            .then((response) => {
+        async function serverCall() {
+            try {
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                return response.json();
-            })
-            .then((body) => {
-                const businesses = body.businesses; // Use `const` for safety and proper scope
+                const body = await response.json();
+                const businesses = body.businesses;
 
+                const coordinates = [];
                 businesses.forEach((bus) => {
                     const {
                         name,
-                        coordinates: { latitude: lat, longitude: long },
+                        coordinates: { latitude: lat_bus, longitude: long_bus },
                         categories,
                         rating,
                         price,
@@ -131,27 +140,40 @@
                     } = bus;
 
                     const cat = categories[0]?.title || "N/A"; // Safely access category
-                    const combined_loc = display_address.join(", "); // Format address as a string
+                    const combined_loc = display_address.join(", "); 
+                    
+                    const mark = {
+                        position: { lat: lat_bus, lng: long_bus },
+                        title: name,
+                    };
 
-                    const rowData = [name, cat, rating, price, combined_loc]; // Add ID to the start of the row data
-                    business.push(rowData);
+                    coordinates.push(mark); // Push marker coordinates
+                    const rowData = [name, cat, rating, price, combined_loc];
+                    business.push(rowData); // Add row data to `business` array
                 });
-                renderTable();
-            })
-            .catch((error) => {
-                console.error('Fetch error:', error);
-            });
+
+                renderTable(); // Render the table after data processing
+                return coordinates; // Return the coordinates array
+            } catch (error) {
+                console.error("Fetch error:", error);
+                return []; // Return an empty array on error
+            }
+        }
+        
 
         /* Google Maps autocomplete */
 
+        let map; // Declare map globally
         let autocomplete;
         let address1Field;
+        let markersArray = [];
+
 
         const initAutocomplete = () => {
             address1Field = document.querySelector("#res-address");
             const googleMapAutoOption = {
                 componentRestrictions: { country: ["us"] },
-                fields: ["name", "formatted_address", "rating", "price_level"],
+                fields: ["name", "formatted_address", "geometry", "rating", "price_level"],
                 types: ["restaurant", "cafe"],
             };
             autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
@@ -160,19 +182,82 @@
         };
 
         const fillInAddress = () => {
-            if (business.length >= 20){
+            const place = autocomplete.getPlace();
+            if (!place.geometry) {
+                console.error("No geometry available for this place.");
                 return;
             }
-            const place = autocomplete.getPlace();
-            const rowData = [place.name, "idk, Google doesn't say", place.rating, priceMapping[place.price_level], place.formatted_address];
+
+            const rowData = [place.name, "user-inserted", place.rating, priceMapping[place.price_level], place.formatted_address];
             business.push(rowData);
+
+            const mark = {
+                position: { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() },
+                title: place.name,
+            };
+
+            addMarker(mark); // Add marker
             renderTable();
         };
-        window.initAutocomplete = initAutocomplete;
+
+        async function initMap() {
+            const { Map } = await google.maps.importLibrary("maps");
+            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+            const local_coordinates = await serverCall();
+
+            map = new Map(document.getElementById("map"), {
+                center: { lat: 39.9526, lng: -75.16522 },
+                zoom: 12,
+                mapId: "6747d039df5a2bde",
+            });
+
+            for (const coord of local_coordinates) {
+                addMarker(coord); // Add markers from server call
+            }
+        }
+
+        function addMarker(coord) {
+            const marker = new google.maps.marker.AdvancedMarkerElement({
+                map: map,
+                position: coord.position,
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: coord.title,
+            });
+
+            marker.element.addEventListener("click", function () {
+                infoWindow.open(map, marker);
+            });
+
+            markersArray.push(marker);
+        }
+
+        function removeMarker(index) {
+            if (index >= 0 && index < markersArray.length && markersArray[index]) {
+                markersArray[index].setMap(null);
+                markersArray.splice(index, 1);
+            } else {
+                console.error("Invalid marker index");
+            }
+        }
+
+        function initialize() {
+        // Call both initializers within the single callback
+            initMap();
+            initAutocomplete();
+        }
+
+       
+        
     </script>
+
     <script
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArRsGEjIoKukurm-ytwFDhD1G5A9A643c&callback=initAutocomplete&libraries=places&v=weekly"
+        src="https://maps.googleapis.com/maps/api/js?key=PUTKEYHERE&libraries=places&v=weekly&callback=initialize"
+        async
         defer></script>
+
 </body>
 
 </html>
