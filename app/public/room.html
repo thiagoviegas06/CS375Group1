@@ -9,7 +9,7 @@
 </head>
 
 <body>
-  
+
   <div class="container">
     <div id="chatRoom">
       <div id="messages">
@@ -17,13 +17,13 @@
       <input id="input" type="text" placeholder="Type your message...">
       <button id="send">Send</button>
     </div>
-  
+
     <div id="middleColumn">
       <div>
         <p>Middle Section</p>
       </div>
     </div>
-  
+
     <div id="usersList"></div>
   </div>
 
@@ -86,7 +86,7 @@
       appendMessage({ username: clientUsername, message: message });
     });
 
-    socket.on("bar", function(data) {
+    socket.on("bar", function (data) {
       console.log("Received message:", data.message);
       appendMessage(data);
     });
@@ -195,7 +195,12 @@
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ "restaurant": restaurant.name })
+            body: JSON.stringify(
+              {
+                "restaurant": restaurant.name,
+                "increment": userVotes[restaurant.name]
+              }
+            )
           });
           displayRestaurant(currentIndex);
         });

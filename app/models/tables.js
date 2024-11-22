@@ -70,10 +70,10 @@ class VotingTable {
     constructor() {
     }
 
-    static incrementVote = async (userPID, resName) => {
+    static incrementVote = async (userPID, resName, inc = 1) => {
         const query1 = `
             UPDATE ${VotingTable.tableName} 
-            SET ${VotingTable.fieldVoteNum} = ${VotingTable.fieldVoteNum} + 1 
+            SET ${VotingTable.fieldVoteNum} = ${VotingTable.fieldVoteNum} + ${inc} 
             WHERE ${VotingTable.fieldUserPID} = $1 
                 AND ${VotingTable.fieldResName} = $2
             RETURNING *;
@@ -83,7 +83,7 @@ class VotingTable {
             const query2 = `
                 INSERT INTO ${VotingTable.tableName}
                 (${VotingTable.fieldUserPID}, ${VotingTable.fieldResName}, ${VotingTable.fieldVoteNum})
-                VALUES ($1, $2, 1)
+                VALUES ($1, $2, ${inc})
                 RETURNING *;
             `
             const _ = await localPool.query(query2, [userPID, resName]);

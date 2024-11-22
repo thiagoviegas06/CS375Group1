@@ -177,9 +177,10 @@ app.post('/vote', async (req, res) => {
   }
   try {
     const username = req.session.username;
+    const increment = req.body.increment;
     const user = await UserTable.findByUsername(username);
     const id = user.pid;
-    await VotingTable.incrementVote(id, req.body.restaurant);
+    await VotingTable.incrementVote(id, req.body.restaurant, increment ? increment : 1);
     return res.sendStatus(200);
   }
   catch (_) {
