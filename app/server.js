@@ -3,6 +3,7 @@ const axios = require('axios');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const multer = require('multer');
+
 const store = new session.MemoryStore();
 const app = express();
 const { UserTable, RestaurantTable, VotingTable } = require('./models/tables.js');
@@ -18,6 +19,12 @@ let { Server } = require("socket.io");
 let server = http.createServer(app);
 let io = new Server(server);
 const sharedsession = require('express-socket.io-session');
+
+
+//thiagos 
+let apiFile = require("../env.json");
+let yelpKey = apiFile["yelp_key"];
+let googleKey = apiFile["google_key"]; 
 
 app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);
@@ -170,15 +177,275 @@ app.post('/vote', async (req, res) => {
   }
   try {
     const username = req.session.username;
+    const increment = req.body.increment;
     const user = await UserTable.findByUsername(username);
     const id = user.pid;
-    await VotingTable.incrementVote(id, req.body.restaurant);
+    await VotingTable.incrementVote(id, req.body.restaurant, increment ? increment : 1);
     return res.sendStatus(200);
   }
   catch (_) {
     return res.sendStatus(500);
   }
 });
+
+app.get("/preferences", (_, res) =>{
+  res.sendFile(__dirname + "/public/preferences.html");
+});
+
+app.get("/nomination", (_, res) => {
+  res.sendFile(__dirname + "/public/nomination.html")
+});
+
+function sendYelp(pref, roomID) {
+  const options = {
+    method: 'GET',
+    url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=10&categories=${pref.cuisine}`,
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${yelpKey}`
+    }
+  };
+
+  let currentRoom = rooms.roomID;
+  if (!currentRoom) {
+    console.error(`Room with ID ${roomID} not found.`);
+    return;
+  }
+
+  axios.request(options)
+    .then((yelpRes) => {
+      let businesses = yelpRes.data.businesses;
+      let restaurantData = {}; // Dictionary to hold restaurant details
+
+      for (let business of businesses) {
+        let name = business.name;
+        let alias = business.alias;
+        let googleAlias = alias.replace(/-/g, "&");
+
+        restaurantData[name] = {
+          yelp: {
+            price: business.price,
+            rating: business.rating,
+            location: business.location,
+            phone: business.display_phone,
+            isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
+            attributes: business.attributes || {}, // Default to an empty object if undefined
+          },
+          alias: googleAlias,
+          photos: [], // Placeholder for Google photo references
+        };
+      }
+
+      // Update the currentRoom's restaurant data
+      currentRoom.restaurants = restaurantData;
+      console.log(`Updated room ${roomID} with Yelp restaurant data.`);
+    })
+    .catch((error) => {
+      console.error(`Error fetching Yelp data: ${error.message}`);
+    });
+}
+
+function sendGoogle(pref, roomID) {
+  // Retrieve restaurants from the room by roomID
+  const currentRoomRestaurants = rooms[roomID]?.restaurants;
+  if (!currentRoomRestaurants) {
+    console.error(`Room with ID ${roomID} not found or has no restaurants.`);
+    return;
+  }
+
+  // Prepare an array for promises
+  const googlePromises = [];
+
+  // Loop through the restaurants to get aliases and make Google API requests
+  for (const [name, restaurant] of Object.entries(currentRoomRestaurants)) {
+    const alias = restaurant.alias;
+    const google_url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?fields=formatted_address%2Cname%2Crating%2Copening_hours%2Cgeometry%2Cphotos&input=${alias}&inputtype=textquery&key=${googleKey}`;
+
+    // Add a promise for each Google API request
+    googlePromises.push(
+      axios
+        .request({
+          method: 'GET',
+          url: google_url,
+          headers: { accept: 'application/json' },
+        })
+        .then((res2) => {
+          const apiResponse = res2.data;
+
+          // If photos are available, add their references to the restaurant
+          if (apiResponse?.candidates?.[0]?.photos) {
+            apiResponse.candidates[0].photos.forEach((photo) => {
+              restaurant.photos.push(photo.photo_reference);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error(`Error in Google API request for ${alias}:`, err.response?.data || err.message);
+        })
+    );
+  }
+
+  // Wait for all Google API requests to complete
+  return Promise.all(googlePromises)
+    .then(() => currentRoomRestaurants)
+    .then((updatedRestaurants) => {
+      // Fetch photo data
+      const photoPromises = [];
+
+      for (const [name, restaurant] of Object.entries(updatedRestaurants)) {
+        restaurant.photos.forEach((reference) => {
+          const photoRequest = {
+            method: 'GET',
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${reference}&key=${googleKey}`,
+            responseType: 'arraybuffer',
+          };
+
+          photoPromises.push(
+            axios
+              .request(photoRequest)
+              .then((photoRes) => {
+                const base64Image = Buffer.from(photoRes.data, 'binary').toString('base64');
+                restaurant.photos = `data:image/jpeg;base64,${base64Image}`;
+              })
+              .catch((err) => {
+                console.error("Error in photo request:", err.message);
+              })
+          );
+        });
+      }
+
+      return Promise.all(photoPromises).then(() => updatedRestaurants);
+    })
+    .then((finalRestaurants) => {
+      // Handle final data
+      console.log(`Updated restaurants for room ${roomID}:`, finalRestaurants);
+      generateRestaurants(finalRestaurants); // Custom function to process the data
+      return finalRestaurants; // Optional return
+    })
+    .catch((err) => {
+      console.error("Error during Google data processing:", err.message);
+    });
+}
+
+
+
+app.get("/preferences-api", (req, res) => {
+  let cuisine = req.query.cuisine;
+  let price = req.query.price;
+  let city = req.query.city;
+  let radius = req.query.radius;
+
+
+  console.log({ city, cuisine, price, radius });
+
+  const options = {
+    method: 'GET',
+    url: `https://api.yelp.com/v3/businesses/search?location=${city}&price=${price}&limit=10&categories=${cuisine}`,
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${yelpKey}`
+    }
+  };
+
+  // First Yelp API request
+  axios.request(options)
+  .then(yelpRes => {
+    let business = yelpRes.data.businesses;
+    let google = [];
+    let restaurantData = {}; // Dictionary to hold restaurant details
+
+    for (let a of business) {
+      let name = a.name;
+      let alias = a.alias;
+      let google_alias = alias.replace(/-/g, "&");
+
+      // Add Google alias to the array for API requests
+      google.push(google_alias);
+
+      // Initialize the dictionary entry
+      restaurantData[name] = {
+        yelp: {
+          price: a.price,
+          rating: a.rating,
+          location: a.location,
+          phone: a.display_phone,
+          isOpen: a.is_open_now,
+          attributes: a.attributes,
+        },
+        photos: [], // Placeholder for Google photo references
+      };
+    }
+
+    // Make Google API requests
+    const googlePromises = google.map((alias, index) => {
+      let google_url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?fields=formatted_address%2Cname%2Crating%2Copening_hours%2Cgeometry%2Cphotos&input=${alias}&inputtype=textquery&key=${googleKey}`;
+
+      return axios
+        .request({
+          method: 'GET',
+          url: google_url,
+          headers: { accept: 'application/json' },
+        })
+        .then(res2 => {
+          const apiResponse = res2.data;
+          const name = Object.keys(restaurantData)[index]; // Map back to restaurant by index
+
+          if (apiResponse && apiResponse.candidates && apiResponse.candidates[0].photos) {
+            // Add photo references to the dictionary entry
+            apiResponse.candidates[0].photos.forEach(photo => {
+              restaurantData[name].photos.push(photo.photo_reference);
+            });
+          }
+        })
+        .catch(errg => {
+          console.error(`Error in Google API request for ${alias}:`, errg.response?.data || errg.message);
+        });
+    });
+
+    // Wait for all Google API requests to complete
+    return Promise.all(googlePromises).then(() => restaurantData);
+  })
+  .then(restaurantData => {
+    // Make photo requests for each photo reference in the dictionary
+    const photoPromises = [];
+
+    for (let name in restaurantData) {
+      restaurantData[name].photos.forEach(reference => {
+        const photoRequest = {
+          method: 'GET',
+          url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${reference}&key=${googleKey}`,
+          responseType: 'arraybuffer',
+        };
+
+        photoPromises.push(
+          axios
+            .request(photoRequest)
+            .then(photoRes => {
+              const base64Image = Buffer.from(photoRes.data, 'binary').toString('base64');
+              restaurantData[name].photos = `data:image/jpeg;base64,${base64Image}`;
+            })
+            .catch(err => {
+              console.error("Error in photo request:", err.message);
+            })
+        );
+      });
+    }
+
+    return Promise.all(photoPromises).then(() => restaurantData);
+  })
+  .then(restaurantData => {
+    // Final response
+    console.log(restaurantData);
+    generateRestaurants(restaurantData); // Your custom function for handling the final response
+    res.json({ restaurants: restaurantData });
+  })
+  .catch(err => {
+    console.error("Error during process:", err.message);
+    res.status(500).json({ error: "An error occurred during processing." });
+  });
+});
+    
+
 
 app.post('/profile_pic', upload.single('file'), (req, res) => {
   if (!req.file) {
@@ -201,6 +468,7 @@ app.post('/profile_pic', upload.single('file'), (req, res) => {
       filePath: `/profile_pic/${userName}${ext}`,
     });
   });
+
 });
 
 
@@ -271,6 +539,32 @@ app.post('/create', (req, res) => {
   };
   return res.json({ roomId });
 });
+
+app.get('/nominations-call', (req, res) => {
+
+  const dummyCall = {
+    method: 'GET',
+    url: `https://api.yelp.com/v3/businesses/search?location=philadelphia&price=2&limit=10&categories=mexican`,
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${yelpKey}`
+    }
+  };
+
+  axios.request(dummyCall)
+    .then(dumRes => {
+      res.json(dumRes.data); // Send only the response data to the client
+    })
+    .catch(err => {
+      console.error(err); // Log the error for debugging
+      res.status(err.response?.status || 500).json({
+        error: err.message || 'An error occurred while fetching data from Yelp'
+      });
+    });
+});
+
+
+
 
 app.get('/room/:roomId', (req, res) => {
   let { roomId } = req.params;
@@ -426,6 +720,22 @@ function calculateResults(votes, restaurants) {
   return Object.entries(restaurantScores).sort((a, b) => b[1] - a[1]).map(([name, score]) => ({ name, score }));
 }
 
+function generateRestaurants(restaurantObj ){
+  rest_id= 0;
+  rest = [];
+  for (let key in restaurantObj) {
+    if (restaurantObj.hasOwnProperty(key)) {
+      let businessData = restaurantObj[key];
+      
+      // Destructure the array for easier access
+      let [price, rating, location, display_phone, is_open_now, attributes] = businessData;
+
+
+      rest = {id: rest_id, name: key, 'price': price, 'rating': rating, 'street': location.address1, 'city': location.city, 'zip': location.zip_code, 'phone': display_phone, 'open': is_open_now, 'menu': attributes.menu_url };
+    }
+  }
+}
+
 function getDummyRestaurants() {
   return [
     { id: 1, name: 'Restaurant A', picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop" },
@@ -434,6 +744,10 @@ function getDummyRestaurants() {
     { id: 4, name: 'Restaurant D', picture: "https://media.tenor.com/v6j3qu9ZmMIAAAAM/funny-cat.gif" }
   ];
 }
+
+app.get("/map", (_, res)=>{
+  res.sendFile(__dirname + "/public/map.html")
+});
 
 
 server.listen(port, hostname, () => {

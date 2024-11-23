@@ -17,13 +17,48 @@
       <input id="input" type="text" placeholder="Type your message...">
       <button id="send">Send</button>
     </div>
-  
+
     <div id="middleColumn">
       <div>
-        <p>Middle Section</p>
+        <div id="preferences-container">
+          <div id="host-preferences" style="display: none;">
+            <form>
+              <h1>What do you feel like eating?</h1>
+      
+              <label for="cuisine">Cuisine:</label>
+              <select id="cuisine" name="cuisine" required>
+                <option value="" disabled selected>Select a cuisine</option>
+                <option value="american">American</option>
+                <option value="italian">Italian</option>
+                <option value="mexican">Mexican</option>
+                <option value="asian">Asian</option>
+              </select>
+              <br>
+      
+              <label for="price">Price:</label>
+              <select id="price" name="price" required>
+                <option value="" disabled selected>Select a price range</option>
+                <option value="1">$</option>
+                <option value="2">$$</option>
+                <option value="3">$$$</option>
+                <option value="4">$$$$</option>
+              </select>
+              <br>
+      
+              <label for="location">City:</label>
+              <input id="location" name="location" type="text" placeholder="Enter your city" required>
+              <br>
+      
+              <label for="radius">How far you are willing to go:</label>
+              <input id="radius" name="radius" type="number" placeholder="Enter your radius" required>
+              <br>
+            </form>
+
+            <button id="preferences-submit">Submit</button>
+          </div>
+        </div>
       </div>
     </div>
-  
     <div id="usersList"></div>
   </div>
 
@@ -34,190 +69,7 @@
   <div id="votingResults"></div>
 
   <script src="/socket.io.js"></script>
-
-  <script>
-    function detectPageRefresh() {
-      let navigationType;
-
-      if (performance.getEntriesByType('navigation').length > 0) {
-        navigationType = performance.getEntriesByType('navigation')[0].type;
-      } else {
-        navigationType = performance.navigation.type;
-        if (navigationType === 1) {
-          navigationType = 'reload';
-        } else {
-          navigationType = 'navigate';
-        }
-      }
-
-      if (navigationType === 'reload') {
-
-        window.location.href = '/';
-      }
-    }
-    detectPageRefresh();
-
-    window.addEventListener('beforeunload', () => {
-      socket.disconnect();
-    });
-
-    let socket = io();
-    let usersList = document.getElementById("usersList");
-    let startVoteButton = document.getElementById("startVote");
-    let button = document.getElementById("send");
-    let input = document.getElementById("input");
-    let messagesDiv = document.getElementById("messages");
-    let clientUsername = null;
-
-    function appendMessage(data) {
-      let item = document.createElement("div");
-      item.textContent = `${data.username}: ${data.message}`;
-      messagesDiv.appendChild(item);
-    }
-
-    button.addEventListener("click", () => {
-      let message = input.value;
-      if (message === "") {
-        return;
-      }
-      console.log("Sending message:", message);
-      socket.emit("foo", { message });
-      input.value = "";
-      appendMessage({ username: clientUsername, message: message });
-    });
-
-    socket.on("bar", function(data) {
-      console.log("Received message:", data.message);
-      appendMessage(data);
-    });
-
-    fetch('/get-username')
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          clientUsername = data.username;
-        }
-      });
-
-    let pathParts = window.location.pathname.split("/");
-    let roomId = pathParts[pathParts.length - 1];
-
-    socket.emit('joinRoom', { "roomId": roomId });
-
-    socket.on('updateUserList', (userList) => {
-      usersList.innerHTML = '';
-
-      userList.forEach(user => {
-        let listItem = document.createElement('li');
-        listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
-        usersList.appendChild(listItem);
-
-        if (user.isPartyLeader && user.username === clientUsername) {
-          startVoteButton.style.display = 'inline-block';
-        }
-      });
-    });
-
-    startVoteButton.addEventListener("click", () => {
-      socket.emit("startVoting", { roomId: roomId });
-    });
-
-    socket.on('startVoting', (data) => {
-      const restaurants = data.restaurants;
-      let currentIndex = 0;
-      let userVotes = {};
-      let submittedVote = false;
-
-      function displayRestaurant(index) {
-        socket.emit("submitCurrentVotes", { votes: userVotes })
-        if (index >= restaurants.length && !submittedVote) {
-          socket.emit('submitVotes', { votes: userVotes });
-          document.getElementById('votingSection').innerHTML = "<p>Voting completed. Thank you!</p>";
-          submittedVote = true;
-          return;
-        }
-        const restaurant = restaurants[index];
-
-        //Making sure the restaurant exists in the database
-        fetch('/restaurant', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ "restaurant": restaurant.name })
-        });
-
-        let votingSection = document.getElementById('votingSection');
-        votingSection.innerHTML = '';
-
-        let restaurantDiv = document.createElement('div');
-
-        let nameElement = document.createElement('h2');
-        nameElement.textContent = restaurant.name;
-
-        let pictureElement = document.createElement('img');
-        pictureElement.src = restaurant.picture;
-        pictureElement.alt = restaurant.name;
-        pictureElement.style.maxWidth = '400px';
-        pictureElement.style.height = 'auto';
-
-        let yesButton = document.createElement('button');
-        yesButton.textContent = 'Yes';
-
-        let noButton = document.createElement('button');
-        noButton.textContent = 'No';
-
-        yesButton.addEventListener('click', () => {
-          currentIndex++;
-          userVotes[restaurant.name] = 1;
-
-          //updating personal preference
-          fetch('/vote', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ "restaurant": restaurant.name })
-          });
-          displayRestaurant(currentIndex);
-        });
-
-        noButton.addEventListener('click', () => {
-          currentIndex++;
-          userVotes[restaurant.name] = -1;
-          displayRestaurant(currentIndex);
-        });
-
-        restaurantDiv.appendChild(nameElement);
-        restaurantDiv.appendChild(pictureElement);
-        restaurantDiv.appendChild(yesButton);
-        restaurantDiv.appendChild(noButton);
-
-        votingSection.appendChild(restaurantDiv);
-      }
-
-      displayRestaurant(currentIndex);
-    });
-
-    socket.on('votingResults', (data) => {
-      const results = data.results;
-      let resultsSection = document.getElementById('votingResults');
-      resultsSection.innerHTML = '<h2>Voting Results</h2>';
-
-      let resultsList = document.createElement('ul');
-
-      console.log(data)
-
-      for (const restaurant of Object.values(results)) {
-        let listItem = document.createElement('li');
-        listItem.textContent = `${restaurant.name}: ${restaurant.score}`;
-        resultsList.appendChild(listItem);
-      }
-
-      resultsSection.appendChild(resultsList);
-    });
-  </script>
-
+  <script src="/room.js" defer></script>
 </body>
 
 </html>
