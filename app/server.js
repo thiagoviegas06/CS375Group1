@@ -196,54 +196,95 @@ app.get("/nomination", (_, res) => {
   res.sendFile(__dirname + "/public/nomination.html")
 });
 
-function sendYelp(pref, roomID) {
-  const options = {
-    method: 'GET',
-    url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=10&categories=${pref.cuisine}`,
-    headers: {
-      accept: 'application/json',
-      Authorization: `Bearer ${yelpKey}`
+app.get('/sendYelp', async (req, res) => {
+  try {
+    const { cuisine, price, city, radius, roomID } = req.query;
+
+    if (!cuisine || !price || !city || !radius || !roomID) {
+      return res.status(400).json({ error: "Missing required parameters" });
     }
-  };
 
-  let currentRoom = rooms.roomID;
-  if (!currentRoom) {
-    console.error(`Room with ID ${roomID} not found.`);
-    return;
+    const preferences = {
+      cuisine : cuisine,
+      price : price,
+      city : city,
+      radius : radius
+    };
+
+    const yelpResponse = await sendYelp(preferences, roomID);
+    let resturantData = rooms[roomID].restaurants;
+
+    for (let s of Object.values(rooms[roomID].sockets)) {
+      s.emit('nominations', { resturantData });
+    }
+
+    res.json({success: "ok"});
+
+  } catch (error) {
+    console.error("Error in /sendYelp:", error.message);
+    res.status(500).json({ error: "Failed to process Yelp request" });
   }
+});
 
-  axios.request(options)
-    .then((yelpRes) => {
-      let businesses = yelpRes.data.businesses;
-      let restaurantData = {}; // Dictionary to hold restaurant details
+function sendYelp(pref, roomID) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      method: 'GET',
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=7&categories=${pref.cuisine}`,
+      headers: {
+        accept: 'application/json',
+        Authorization: `Bearer ${yelpKey}`,
+      },
+    };
 
-      for (let business of businesses) {
-        let name = business.name;
-        let alias = business.alias;
-        let googleAlias = alias.replace(/-/g, "&");
+    let currentRoom = rooms[roomID];
+    if (!currentRoom) {
+      const errorMsg = `Room with ID ${roomID} not found.`;
+      console.error(errorMsg);
+      reject(new Error(errorMsg)); // Reject the promise if the room is not found
+      return; // Exit early to avoid further execution
+    }
 
-        restaurantData[name] = {
-          yelp: {
-            price: business.price,
-            rating: business.rating,
-            location: business.location,
-            phone: business.display_phone,
-            isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
-            attributes: business.attributes || {}, // Default to an empty object if undefined
-          },
-          alias: googleAlias,
-          photos: [], // Placeholder for Google photo references
-        };
-      }
+    // Make the Yelp API request
+    axios
+      .request(options)
+      .then((yelpRes) => {
+        let businesses = yelpRes.data.businesses;
+        let restaurantData = {}; // Dictionary to hold restaurant details
 
-      // Update the currentRoom's restaurant data
-      currentRoom.restaurants = restaurantData;
-      console.log(`Updated room ${roomID} with Yelp restaurant data.`);
-    })
-    .catch((error) => {
-      console.error(`Error fetching Yelp data: ${error.message}`);
-    });
+        for (let business of businesses) {
+          let name = business.name;
+          let alias = business.alias;
+          let googleAlias = alias.replace(/-/g, "&");
+
+          restaurantData[name] = {
+            yelp: {
+              price: business.price,
+              rating: business.rating,
+              location: business.location,
+              phone: business.display_phone,
+              isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
+              attributes: business.attributes || {}, // Default to an empty object if undefined
+            },
+            alias: googleAlias,
+            photos: [], // Placeholder for Google photo references
+          };
+        }
+
+        // Update the currentRoom's restaurant data
+        currentRoom.restaurants = restaurantData;
+        console.log(`Updated room ${roomID} with Yelp restaurant data.`);
+
+        // Resolve the promise with the restaurant data
+        resolve(restaurantData);
+      })
+      .catch((error) => {
+        console.error(`Error fetching Yelp data: ${error.message}`);
+        reject(error); // Reject the promise if the request fails
+      });
+  });
 }
+
 
 function sendGoogle(pref, roomID) {
   // Retrieve restaurants from the room by roomID
@@ -335,8 +376,6 @@ app.get("/preferences-api", (req, res) => {
   let city = req.query.city;
   let radius = req.query.radius;
 
-
-  console.log({ city, cuisine, price, radius });
 
   const options = {
     method: 'GET',
@@ -435,7 +474,6 @@ app.get("/preferences-api", (req, res) => {
   })
   .then(restaurantData => {
     // Final response
-    console.log(restaurantData);
     generateRestaurants(restaurantData); // Your custom function for handling the final response
     res.json({ restaurants: restaurantData });
   })
@@ -480,7 +518,6 @@ let rooms = {
     votes: {},
     usersFinishedVoting: [],
     restaurants: [],
-    messages: {},
   },
 };
 
@@ -519,7 +556,7 @@ function checkVotingDone(roomId) {
 
 function updateVotingResults(roomId) {
   const room = rooms[roomId];
-  const results = calculateResults(room.votes, room.restaurants);
+  const results = calculateResults(room.votes, getRestaurantsForVote(roomId));
 
   for (let s of Object.values(room.sockets)) {
     s.emit('votingResults', { results });
@@ -534,8 +571,7 @@ app.post('/create', (req, res) => {
     votingActive: false,
     votes: {},
     usersFinishedVoting: [],
-    restaurants: [],
-    messages: {}
+    restaurants: []
   };
   return res.json({ roomId });
 });
@@ -576,14 +612,10 @@ app.get('/room/:roomId', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`Socket ${socket.id} connected`);
-  let url = socket.handshake.headers.referer;
-  let pathParts = url.split("/");
-  let roomId = pathParts[pathParts.length - 1];
 
   socket.on('joinRoom', (data) => {
     const { roomId } = data;
     const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
-    socket.username =  username
 
     if (!rooms.hasOwnProperty(roomId)) {
       socket.emit('error', { message: 'Room does not exist.' });
@@ -609,25 +641,6 @@ io.on('connection', (socket) => {
     updateRoomUsers(roomId);
   });
 
-  socket.on("foo", ({ message }) => {
-    console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
-
-    if (!rooms[roomId] || !rooms[roomId].sockets) {
-      console.error(`Room ${roomId} does not exist or has no sockets`);
-      return;
-    }
-    let messageObj = {
-      username: socket.username || "GUEST",
-      message: message
-    }  
-    console.log(messageObj)
-
-    for (let [socketId, otherSocket] of Object.entries(rooms[roomId].sockets)) {
-      if (otherSocket.id === socket.id) continue;
-  
-      otherSocket.emit("bar",  messageObj );
-    }
-  });
 
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
@@ -676,10 +689,9 @@ io.on('connection', (socket) => {
     room.votingActive = true;
     room.votes = {};
     room.usersFinishedVoting = [];
-    room.restaurants = getDummyRestaurants();
 
     for (let s of Object.values(room.sockets)) {
-      s.emit('startVoting', { restaurants: room.restaurants });
+      s.emit('startVoting', { restaurants: getRestaurantsForVote(roomId) });
     }
   });
 
@@ -690,8 +702,6 @@ io.on('connection', (socket) => {
   
     room.votes[username] = data.votes;
 
-    const results = calculateResults(room.votes, room.restaurants);
-  
     updateVotingResults(roomId)
   });
 
@@ -743,6 +753,25 @@ function getDummyRestaurants() {
     { id: 3, name: 'Restaurant C', picture: "https://i.giphy.com/2zUn8hAwJwG4abiS0p.webp" },
     { id: 4, name: 'Restaurant D', picture: "https://media.tenor.com/v6j3qu9ZmMIAAAAM/funny-cat.gif" }
   ];
+}
+
+function getRestaurantsForVote(roomId) {
+  // Initialize an empty array for the copied restaurant objects
+  const restaurants = [];
+  const businesses = rooms[roomId].restaurants;
+
+  Object.entries(businesses).forEach(([name, details]) => {
+    restaurants.push({
+      name: name,
+      price: details.yelp.price,
+      rating: details.yelp.rating,
+      location: details.yelp.location.display_address.join(", "),
+      phone: details.yelp.phone,
+      picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop", // Adding a static picture
+    });
+  });
+
+  return restaurants;
 }
 
 app.get("/map", (_, res)=>{
