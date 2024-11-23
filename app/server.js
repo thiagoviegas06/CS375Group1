@@ -480,6 +480,7 @@ let rooms = {
     votes: {},
     usersFinishedVoting: [],
     restaurants: [],
+    messages: {},
   },
 };
 
@@ -533,7 +534,8 @@ app.post('/create', (req, res) => {
     votingActive: false,
     votes: {},
     usersFinishedVoting: [],
-    restaurants: []
+    restaurants: [],
+    messages: {}
   };
   return res.json({ roomId });
 });
@@ -574,10 +576,14 @@ app.get('/room/:roomId', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`Socket ${socket.id} connected`);
+  let url = socket.handshake.headers.referer;
+  let pathParts = url.split("/");
+  let roomId = pathParts[pathParts.length - 1];
 
   socket.on('joinRoom', (data) => {
     const { roomId } = data;
     const username = socket.handshake.session.username || socket.handshake.session.guestname || 'GUEST';
+    socket.username =  username
 
     if (!rooms.hasOwnProperty(roomId)) {
       socket.emit('error', { message: 'Room does not exist.' });
@@ -603,6 +609,25 @@ io.on('connection', (socket) => {
     updateRoomUsers(roomId);
   });
 
+  socket.on("foo", ({ message }) => {
+    console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
+
+    if (!rooms[roomId] || !rooms[roomId].sockets) {
+      console.error(`Room ${roomId} does not exist or has no sockets`);
+      return;
+    }
+    let messageObj = {
+      username: socket.username || "GUEST",
+      message: message
+    }  
+    console.log(messageObj)
+
+    for (let [socketId, otherSocket] of Object.entries(rooms[roomId].sockets)) {
+      if (otherSocket.id === socket.id) continue;
+  
+      otherSocket.emit("bar",  messageObj );
+    }
+  });
 
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
