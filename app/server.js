@@ -747,6 +747,25 @@ io.on('connection', (socket) => {
     }
   })
     
+  socket.on("foo", ({ message }) => {
+    const roomId = socket.roomId;
+
+    if (!rooms[roomId] || !rooms[roomId].sockets) {
+      console.error(`Room ${roomId} does not exist or has no sockets`);
+      return;
+    }
+    let messageObj = {
+      username: socket.username || req.session.guestname || "GUEST",
+      message: message
+    }  
+    console.log(messageObj)
+
+    for (let [socketId, otherSocket] of Object.entries(rooms[roomId].sockets)) {
+      if (otherSocket.id === socket.id) continue;
+  
+      otherSocket.emit("bar",  messageObj );
+    }
+  });
 });
 
 function calculateResults(votes, restaurants) {
