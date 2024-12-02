@@ -54,6 +54,8 @@ app.get('/', (req, res) => {
   }
 });
 
+
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -149,6 +151,11 @@ app.post('/guest-username', (req, res) => {
 
   res.json({ success: true, message: 'Guest username successful' });
 });
+
+app.get('/test', (req, res) => {
+  res.sendFile(__dirname + "/public/test.html");
+});
+
 
 app.get('/get-username', (req, res) => {
   if (req.session.username) {
