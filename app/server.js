@@ -722,7 +722,11 @@ io.on('connection', (socket) => {
     const roomId = socket.roomId;
     const room = rooms[roomId];
 
-    delete room.restaurants[name];
+    console.log(rooms[roomId].restaurants)
+    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);
+    if (index !== -1) {
+      rooms[roomId].restaurants.splice(index, 1);
+    }
 
     let resturantData = rooms[roomId].restaurants;
     for (let s of Object.values(rooms[roomId].sockets)) {
