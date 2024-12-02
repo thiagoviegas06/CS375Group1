@@ -212,6 +212,7 @@ app.get('/sendYelp', async (req, res) => {
     };
 
     const yelpResponse = await sendYelp(preferences, roomID);
+    rooms[roomID].restaurants = getRestaurantsForVote(roomID);
     let resturantData = rooms[roomID].restaurants;
 
     for (let s of Object.values(rooms[roomID].sockets)) {
@@ -230,7 +231,7 @@ function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=7&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=1&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -379,7 +380,7 @@ app.get("/preferences-api", (req, res) => {
 
   const options = {
     method: 'GET',
-    url: `https://api.yelp.com/v3/businesses/search?location=${city}&price=${price}&limit=10&categories=${cuisine}`,
+    url: `https://api.yelp.com/v3/businesses/search?location=${city}&price=${price}&limit=1&categories=${cuisine}`,
     headers: {
       accept: 'application/json',
       Authorization: `Bearer ${yelpKey}`
@@ -556,7 +557,7 @@ function checkVotingDone(roomId) {
 
 function updateVotingResults(roomId) {
   const room = rooms[roomId];
-  const results = calculateResults(room.votes, getRestaurantsForVote(roomId));
+  const results = calculateResults(room.votes, rooms[roomId].restaurants);
 
   for (let s of Object.values(room.sockets)) {
     s.emit('votingResults', { results });
@@ -580,7 +581,7 @@ app.get('/nominations-call', (req, res) => {
 
   const dummyCall = {
     method: 'GET',
-    url: `https://api.yelp.com/v3/businesses/search?location=philadelphia&price=2&limit=10&categories=mexican`,
+    url: `https://api.yelp.com/v3/businesses/search?location=philadelphia&price=2&limit=1&categories=mexican`,
     headers: {
       accept: 'application/json',
       Authorization: `Bearer ${yelpKey}`
@@ -691,7 +692,7 @@ io.on('connection', (socket) => {
     room.usersFinishedVoting = [];
 
     for (let s of Object.values(room.sockets)) {
-      s.emit('startVoting', { restaurants: getRestaurantsForVote(roomId) });
+      s.emit('startVoting', { restaurants: rooms[roomId].restaurants });
     }
   });
 
@@ -715,7 +716,33 @@ io.on('connection', (socket) => {
     }
     checkVotingDone(roomId);
   });
-  
+
+  socket.on('deleteRestaurant', (data) => {
+    const name = data.restaurant;
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+
+    delete room.restaurants[name];
+
+    let resturantData = rooms[roomId].restaurants;
+    for (let s of Object.values(rooms[roomId].sockets)) {
+      s.emit('nominations', { resturantData });
+    }
+  });
+
+  socket.on('addRestaurant', (data) => {
+    const rowData = data.restaurant;
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+
+    room.restaurants.push(rowData);
+
+    let resturantData = rooms[roomId].restaurants;
+    for (let s of Object.values(rooms[roomId].sockets)) {
+      s.emit('nominations', { resturantData });
+    }
+  })
+    
 });
 
 function calculateResults(votes, restaurants) {
@@ -781,4 +808,8 @@ app.get("/map", (_, res)=>{
 
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}`);
+});
+
+app.get("/getGoogleApiKey", (req, res) => {
+  res.json({ key: googleKey });
 });

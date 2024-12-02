@@ -128,8 +128,8 @@ socket.on('startVoting', (data) => {
     sliderDiv.setAttribute("class", "slider_container");
     const mySlider = document.createElement('input');
     mySlider.setAttribute("type", "range");
-    mySlider.setAttribute("min", "0");
-    mySlider.setAttribute("max", "9");
+    mySlider.setAttribute("min", "1");
+    mySlider.setAttribute("max", "10");
     //mySlider.setAttribute("defaultValue", "5");
     mySlider.setAttribute("value", "5");
     mySlider.setAttribute("class", "slider");
@@ -187,8 +187,6 @@ socket.on('votingResults', (data) => {
   resultsSection.innerHTML = '<h2>Voting Results</h2>';
 
   let resultsList = document.createElement('ul');
-
-  console.log(data)
 
   for (const restaurant of Object.values(results)) {
     let listItem = document.createElement('li');
@@ -258,7 +256,7 @@ const renderTable = () => {
     const removeCell = document.createElement("td");
     const newButton = document.createElement("button");
     newButton.textContent = "Delete";
-    newButton.addEventListener("click", removeRow.bind(null, idx));
+    newButton.addEventListener("click", () => removeRow(idx));
     removeCell.appendChild(newButton);
     newRow.appendChild(removeCell);
 
@@ -266,23 +264,34 @@ const renderTable = () => {
   });
 };
 
-const removeRow = (arrIndex) => {
-  business.splice(arrIndex, 1);
-  renderTable();
+function removeRow(arrIndex) {
+  const name = business[arrIndex][0];
+  socket.emit("deleteRestaurant", { restaurant : name })
 };
 
 // Socket event to populate nominations for all users
 socket.on("nominations", (data) => {
   businesses = data.resturantData;
+  business = [];
   const middleColumn = document.getElementById("middleColumn");
-  console.log(data);
 
-  Object.entries(businesses).forEach(([name, details]) => {
-    business.push([name, details.yelp.price, details.yelp.rating, details.yelp.location.display_address.join(", "), details.yelp.phone])
-  })
+  businesses.forEach((item) => {
+    business.push([
+      item.name,
+      item.price,
+      item.rating,
+      item.location,
+      item.phone
+    ]);
+  });
 
   middleColumn.innerHTML = `
     <h2>Nominations</h2>
+    <h3>Nominate a Restaurant</h3>
+    <form id="restaurant-form">
+      <input type="text" id="res-address" placeholder="Type restaurant address" />
+      <button type="submit">Add Restaurant</button>
+    </form>
     <table>
       <thead>
         <tr>
@@ -299,4 +308,63 @@ socket.on("nominations", (data) => {
   `;
 
   renderTable();
+  initAutocomplete();
 });
+
+
+let autocomplete;
+let address1Field;
+const priceMapping = {
+  0: "",
+  1: "$",
+  2: "$$",
+  3: "$$$",
+  4: "$$$$"
+};
+
+const initAutocomplete = () => {
+  address1Field = document.getElementById("res-address")
+  const googleMapAutoOption = {
+      componentRestrictions: { country: ["us"] },
+      fields: ["name", "formatted_address", "geometry", "rating", "price_level", "formatted_phone_number", "photos"],
+      types: ["restaurant", "cafe"],
+  };
+  autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
+  address1Field.focus();
+  autocomplete.addListener("place_changed", fillInAddress);
+};
+
+const fillInAddress = () => {
+  const place = autocomplete.getPlace();
+  if (!place.geometry) {
+      console.error("No geometry available for this place.");
+      return;
+  }
+  console.log(place);
+
+  const rowData = {name: place.name, 
+                   price: priceMapping[place.price_level], 
+                   rating: place.rating, 
+                   location: place.formatted_address,
+                   phone: place.formatted_phone_number,
+                   picture: place.photos[0]};
+  socket.emit("addRestaurant", { restaurant : rowData })
+};
+
+async function loadGoogleMaps() {
+  try {
+    const response = await fetch("/getGoogleApiKey");
+    const data = await response.json();
+    const apiKey = data.key;
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initAutocomplete`;
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  } catch (error) {
+    console.error("Error loading Google Maps API:", error);
+  }
+}
+
+loadGoogleMaps();
