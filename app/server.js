@@ -145,6 +145,12 @@ app.post('/logout', (req, res) => {
 
 app.post('/guest-username', (req, res) => {
   const username = req.body.username;
+  // add UserLocation to room Obj
+  const userLocation = req.body.userLocation;
+  const roomID = req.body.id;
+
+  rooms[roomsID].userLocations.push(userLocation);
+
   req.session.authenticated = true;
   req.session.guestname = username;
   req.session.save()
@@ -205,9 +211,9 @@ app.get("/nomination", (_, res) => {
 
 app.get('/sendYelp', async (req, res) => {
   try {
-    const { cuisine, price, city, radius, roomID } = req.query;
+    const { cuisine, price, city, radius, roomID, rating } = req.query;
 
-    if (!cuisine || !price || !city || !radius || !roomID) {
+    if (!cuisine || !price || !city || !radius || !roomID || !rating) {
       return res.status(400).json({ error: "Missing required parameters" });
     }
 
@@ -215,7 +221,8 @@ app.get('/sendYelp', async (req, res) => {
       cuisine : cuisine,
       price : price,
       city : city,
-      radius : radius
+      radius : radius,
+      rating : rating
     };
 
     const yelpResponse = await sendYelp(preferences, roomID);
@@ -238,7 +245,7 @@ function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=1&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=1&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -259,24 +266,30 @@ function sendYelp(pref, roomID) {
       .then((yelpRes) => {
         let businesses = yelpRes.data.businesses;
         let restaurantData = {}; // Dictionary to hold restaurant details
+        let rating = pref.rating;
 
         for (let business of businesses) {
           let name = business.name;
           let alias = business.alias;
           let googleAlias = alias.replace(/-/g, "&");
+          let bus_rating = business.rating;
 
-          restaurantData[name] = {
-            yelp: {
-              price: business.price,
-              rating: business.rating,
-              location: business.location,
-              phone: business.display_phone,
-              isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
-              attributes: business.attributes || {}, // Default to an empty object if undefined
-            },
-            alias: googleAlias,
-            photos: [], // Placeholder for Google photo references
-          };
+          if(bus_rating > rating){
+            restaurantData[name] = {
+              yelp: {
+                price: business.price,
+                rating: business.rating,
+                location: business.location,
+                phone: business.display_phone,
+                isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
+                attributes: business.attributes || {}, // Default to an empty object if undefined
+              },
+              alias: googleAlias,
+              photos: [], // Placeholder for Google photo references
+            };
+          }
+          
+
         }
 
         // Update the currentRoom's restaurant data
@@ -526,6 +539,8 @@ let rooms = {
     votes: {},
     usersFinishedVoting: [],
     restaurants: [],
+    userLocations: [],
+    leaderLocation: {}
   },
 };
 
@@ -572,6 +587,7 @@ function updateVotingResults(roomId) {
 }
 
 app.post('/create', (req, res) => {
+  const { userLocation } = req.body;
   let roomId = generateRoomCode();
   rooms[roomId] = {
     users: [],
@@ -579,7 +595,9 @@ app.post('/create', (req, res) => {
     votingActive: false,
     votes: {},
     usersFinishedVoting: [],
-    restaurants: []
+    restaurants: [],
+    userLocations: [],
+    leaderLocation: userLocation
   };
   return res.json({ roomId });
 });

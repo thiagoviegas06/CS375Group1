@@ -197,6 +197,21 @@ socket.on('votingResults', (data) => {
   resultsSection.appendChild(resultsList);
 });
 
+let rating_flag = false;
+let selectRating = document.getElementById("ratingSelect");
+
+document.getElementById("yesNoDropdown").addEventListener("change", function () {
+  const ratingField = document.getElementById("ratingField");
+  if (this.value === "yes") {
+    ratingField.style.display = "block";
+    rating_flag = true;
+  } else {
+    ratingField.style.display = "none";
+    rating_flag = false;
+  }
+});
+
+
 
 const preferencesSubmit = document.getElementById('preferences-submit');
 preferencesSubmit.addEventListener("click", (event) => {
@@ -206,8 +221,20 @@ preferencesSubmit.addEventListener("click", (event) => {
   let city     = document.getElementById("location");
   let radius   = document.getElementById("radius");
 
+  let realRadius = radius.value * 1609.34;
+  // hehe no negative allowed 
+  if(realRadius > 40000 || realRadius < 0){
+    realRadius = 40000;
+  }
+
+  let ratingVal = 50000000;
+
+  if(rating_flag){
+    ratingVal = selectRating.value;
+  }
+
   // Prevent form submission if the button is inside a form
-  const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${radius.value}&roomID=${roomId}`;
+  const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${realRadius}&roomID=${roomId}&rating=${ratingVal}`;
 
   fetch(url)
   .then((response) => {
@@ -366,5 +393,49 @@ async function loadGoogleMaps() {
     console.error("Error loading Google Maps API:", error);
   }
 }
+
+async function initMap() {
+  const { Map } = await google.maps.importLibrary("maps");
+  const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+  const local_coordinates = await serverCall();
+
+  map = new Map(document.getElementById("map"), {
+      center: { lat: 39.9526, lng: -75.16522 },
+      zoom: 12,
+      mapId: "6747d039df5a2bde",
+  });
+
+  for (const coord of local_coordinates) {
+      addMarker(coord); // Add markers from server call
+  }
+}
+
+function addMarker(coord) {
+  const marker = new google.maps.marker.AdvancedMarkerElement({
+      map: map,
+      position: coord.position,
+  });
+
+  const infoWindow = new google.maps.InfoWindow({
+      content: coord.title,
+  });
+
+  marker.element.addEventListener("click", function () {
+      infoWindow.open(map, marker);
+  });
+
+  markersArray.push(marker);
+}
+
+function removeMarker(index) {
+  if (index >= 0 && index < markersArray.length && markersArray[index]) {
+      markersArray[index].setMap(null);
+      markersArray.splice(index, 1);
+  } else {
+      console.error("Invalid marker index");
+  }
+}
+
 
 loadGoogleMaps();

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
+    
     <title>Demo</title>
 </head>
 <body>
@@ -14,21 +15,104 @@
         <button class="button" id="logout">Log out</button>
     </div>  
     <div id="ids"></div>
-    <script>
+    <div id="backdrop"></div>
+
+    <!-- Modal -->
+    <div id="popupModal">
+        <h2>Would you like to share your location?</h2>
+        <p>Sharing your location helps us improve your user experience</p>
+        <button id="yes">Yes</button>
+        <button id="no">No</button>
+        <div id="hide" style="display: none;">
+            <input type="text" id="res-address" placeholder="Type your desired location" />
+            <button type="submit" id="submit">Submit</button>
+
+        </div>
+    </div>
+    <div id="error" style="color: red;"></div>
+
+    <script type = "module">
+        import { getLocation, showError, storePosition, initAutocomplete, setUserLocation } from './locationHelper.js';
+
         let profileButton = document.getElementById("myprofile");
         let button = document.getElementById("send");
         let idsDiv = document.getElementById("ids");
         let joinButton = document.getElementById("join");
         let signOutButton = document.getElementById("logout");
+        const popup = document.getElementById("popupModal");
+        const backdrop = document.getElementById("backdrop");
+        let userLocation = {
+            lat: null,
+            lon: null
+        };
+
         profileButton.addEventListener("click", () => {
             window.location = "myProfile";
         })
-        button.addEventListener("click", async () => {
-            let response = await fetch("/create", { method: "POST" })
+
+        async function generateRoom(){
+            let response = await fetch("/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json", // Tell the server you're sending JSON data
+                },
+                body: JSON.stringify({
+                    userLocation: userLocation, // Include the userLocation in the request body
+                }),
+            });
+
             let { roomId } = await response.json();
             // will redirect to new chatroom immediately
             window.location = `/room/${roomId}`;
+        }
+
+        button.addEventListener("click", () => {
+            popup.style.display = "block";
+            backdrop.style.display = "block";
         });
+
+        const yesButton = document.getElementById("yes");
+        const noButton = document.getElementById("no");
+        
+        yesButton.addEventListener("click", () => {
+            getLocation(
+                (position) => {
+                // Handle successful geolocation
+                    Object.assign(userLocation, storePosition(position));
+                    console.log("Location stored:", userLocation);
+                    generateRoom();
+                },
+                (error) => {
+                // Handle geolocation errors
+                showError(error);
+                }
+            );
+
+            // Hide the popup and backdrop
+            popup.style.display = "none";
+            backdrop.style.display = "none";
+
+            // Generate the room
+            
+        });
+
+        const submitLocation = document.getElementById("submit");
+        submitLocation.addEventListener("click", () => {
+            setUserLocation(userLocation);
+            popup.style.display = "none";
+            backdrop.style.display = "none";
+
+            generateRoom();
+        })
+
+        noButton.addEventListener("click", () => {
+            initAutocomplete(); // Call directly
+            let hideDiv = document.getElementById("hide");
+            hideDiv.style.display = "block";
+        });
+
+
+
         joinButton.addEventListener("click", async () => {
             // will redirect to new chatroom immediately
             window.location.href = `join.html`;
@@ -38,5 +122,11 @@
             window.location = "/";
         })
     </script>
+
+     <script
+        src="https://maps.googleapis.com/maps/api/js?key=&libraries=places&v=weekly&callback=initAutocomplete"
+        defer async>
+     </script>
+    
 </body>
 </html>

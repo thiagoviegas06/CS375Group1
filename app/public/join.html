@@ -24,19 +24,23 @@
     let joinButton = document.getElementById("join");
     let roomId = document.getElementById("roomId");
     let userId = document.getElementById("userId");
-    let userLocation = [];
+    let userLocation = {
+      lat: null,
+      lon: null
+    };
 
     const errorSection = document.getElementById("error");
 
     
     joinButton.addEventListener("click", async () => {
       let username = userId.value;
+      let id = roomId.value;
       fetch("/guest-username", {
         method: 'POST', // HTTP method
         headers: {
           'Content-Type': 'application/json' // Send data as JSON
         },
-        body: JSON.stringify({ username, userLocation }) // Convert the JavaScript object to a JSON string
+        body: JSON.stringify({ username, userLocation, id }) // Convert the JavaScript object to a JSON string
       });
 
       // will redirect to new chatroom
@@ -82,7 +86,8 @@
     function storePosition(position) {
       let latitude = position.coords.latitude;
       let longitude = position.coords.longitude;
-      userLocation = [latitude, longitude]; 
+      userLocation.lat = latitude;
+      userLocation.lon = longitude;
     }
 
 
