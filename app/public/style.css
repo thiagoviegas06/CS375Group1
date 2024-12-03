@@ -156,6 +156,11 @@ input[type="email"]:focus {
     text-decoration: underline;
 }
 
+/**/
+.invisible {
+    display: none;
+}
+
 /* Error Message */
 .error-message {
     color: var(--error-color);
