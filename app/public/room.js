@@ -65,6 +65,24 @@ fetch('/get-username')
 let pathParts = window.location.pathname.split("/");
 let roomId = pathParts[pathParts.length - 1];
 
+let roomURL = `/getRoomObj/?id=${roomId}`;
+let roomObj = {};
+
+function getRoomFromServer(){
+  fetch(roomURL)
+  .then((response) => {
+    return response.json(); // Parse JSON response
+  })
+  .then((body) => {
+    roomObj = body;
+    console.log(body); // Assign the response body to roomObj
+  })
+  .catch((error) => {
+    console.log(error); // Log errors, if any
+  });
+}
+
+
 socket.emit('joinRoom', { "roomId": roomId });
 
 socket.on('updateUserList', (userList) => {
@@ -87,6 +105,11 @@ startVoteButton.addEventListener("click", () => {
 });
 
 socket.on('startVoting', (data) => {
+  getRoomFromServer(); 
+  
+  const userLocations = data.userLocations;
+  const leaderLocation = data.leaderLocation;
+  
   const restaurants = data.restaurants;
   let currentIndex = 0;
   let userVotes = {};
@@ -227,7 +250,7 @@ preferencesSubmit.addEventListener("click", (event) => {
     realRadius = 40000;
   }
 
-  let ratingVal = 50000000;
+  let ratingVal = -10;
 
   if(rating_flag){
     ratingVal = selectRating.value;
@@ -293,14 +316,20 @@ const renderTable = () => {
 
 function removeRow(arrIndex) {
   const name = business[arrIndex][0];
+  removeCell(arrIndex);
   socket.emit("deleteRestaurant", { restaurant : name })
 };
 
 // Socket event to populate nominations for all users
 socket.on("nominations", (data) => {
   businesses = data.resturantData;
+   //let leaderLocation = data.leaderLocation;
+  console.log(data)
+  //console.log(leaderLocation);
   business = [];
   const middleColumn = document.getElementById("middleColumn");
+
+  //const coordinates = [];
 
   businesses.forEach((item) => {
     business.push([
@@ -310,6 +339,16 @@ socket.on("nominations", (data) => {
       item.location,
       item.phone
     ]);
+
+    /*const mark = {
+      position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
+      title: item.name,
+    };
+
+    //adding markers to coordinates list
+
+    coordinates.push(mark); */
+
   });
 
   middleColumn.innerHTML = `
@@ -336,6 +375,17 @@ socket.on("nominations", (data) => {
 
   renderTable();
   initAutocomplete();
+  
+  /*
+  initialize(leaderLocation);
+  initMap(leaderLocation)
+        .then((map) => {
+            for (const coord of coordinates) {
+                addMarker(coord, map); // Pass map to addMarker
+            }
+        })
+        .catch((error) => console.error("Error initializing map or adding markers:", error));
+        */
 });
 
 
@@ -385,7 +435,7 @@ async function loadGoogleMaps() {
     const apiKey = data.key;
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initAutocomplete`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initAutoComplete`;
     script.async = true;
     script.defer = true;
     document.body.appendChild(script);
@@ -394,24 +444,24 @@ async function loadGoogleMaps() {
   }
 }
 
-async function initMap() {
+async function initMap(leaderLocation) {
+  console.log("This is the leader obj");
+  console.log(leaderLocation); 
   const { Map } = await google.maps.importLibrary("maps");
   const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
-  const local_coordinates = await serverCall();
-
-  map = new Map(document.getElementById("map"), {
-      center: { lat: 39.9526, lng: -75.16522 },
+  const map = new Map(document.getElementById("map"), {
+      center: { lat: leaderLocation.lat, lng: leaderLocation.lon },
       zoom: 12,
       mapId: "6747d039df5a2bde",
   });
 
-  for (const coord of local_coordinates) {
-      addMarker(coord); // Add markers from server call
-  }
+  return map; // Return the map instance for further use
 }
 
-function addMarker(coord) {
+let markersArray = [];
+
+function addMarker(coord, map) {
   const marker = new google.maps.marker.AdvancedMarkerElement({
       map: map,
       position: coord.position,
@@ -436,6 +486,13 @@ function removeMarker(index) {
       console.error("Invalid marker index");
   }
 }
+
+function initialize(leaderLocation) {
+  // Call both initializers within the single callback
+      initMap();
+      initAutocomplete(leaderLocation);
+  }
+ 
 
 
 loadGoogleMaps();

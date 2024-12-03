@@ -209,6 +209,12 @@ app.get("/nomination", (_, res) => {
   res.sendFile(__dirname + "/public/nomination.html")
 });
 
+app.get("/getRoomObj", (req, res) => {
+  let roomID = req.query.zip;
+  console.log(rooms[roomID]);
+  res.json(rooms[roomID]);
+});
+
 app.get('/sendYelp', async (req, res) => {
   try {
     const { cuisine, price, city, radius, roomID, rating } = req.query;
@@ -245,7 +251,7 @@ function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=1&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=20&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -270,11 +276,15 @@ function sendYelp(pref, roomID) {
 
         for (let business of businesses) {
           let name = business.name;
+          console.log(name);
           let alias = business.alias;
           let googleAlias = alias.replace(/-/g, "&");
           let bus_rating = business.rating;
+          console.log(bus_rating);
+          console.log(rating);
 
           if(bus_rating > rating){
+            console.log("here"); 
             restaurantData[name] = {
               yelp: {
                 price: business.price,
@@ -588,6 +598,7 @@ function updateVotingResults(roomId) {
 
 app.post('/create', (req, res) => {
   const { userLocation } = req.body;
+  console.log(userLocation);
   let roomId = generateRoomCode();
   rooms[roomId] = {
     users: [],
