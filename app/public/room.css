@@ -126,7 +126,7 @@
     text-align: center;
   }
   
-  #usersList {
+  #rightColumn {
     width: 25%;
     background-color: #1e1e1e;
     padding: 20px;
@@ -136,21 +136,21 @@
     max-height: 400px;
   }
   
-  #usersList ul {
+  #rightColumn ul {
     list-style: none;
   }
   
-  #usersList li {
+  #rightColumn li {
     padding: 10px;
     border-bottom: 1px solid #444444;  /* Darker border between users */
     color: #e0e0e0;  /* Light text color */
   }
   
-  #usersList li:last-child {
+  #rightColumn li:last-child {
     border-bottom: none;
   }
   
-  #usersList .leader {
+  #rightColumn .leader {
     font-weight: bold;
     color: #007bff;  /* Highlight the leader in blue */
   }
@@ -198,7 +198,7 @@
       flex-direction: column;  /* Stack the columns vertically */
     }
   
-    #chatRoom, #middleColumn, #usersList {
+    #chatRoom, #middleColumn, #rightColumn {
       width: 100%;
     }
   }

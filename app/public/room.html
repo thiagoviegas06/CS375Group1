@@ -18,54 +18,54 @@
     </div>
 
     <div id="middleColumn">
-      <div>
-        <div id="preferences-container">
-          <div id="host-preferences" style="display: none;">
-            <form>
-              <h1>What do you feel like eating?</h1>
-      
-              <label for="cuisine">Cuisine:</label>
-              <select id="cuisine" name="cuisine" required>
-                <option value="" disabled selected>Select a cuisine</option>
-                <option value="american">American</option>
-                <option value="italian">Italian</option>
-                <option value="mexican">Mexican</option>
-                <option value="asian">Asian</option>
-              </select>
-              <br>
-      
-              <label for="price">Price:</label>
-              <select id="price" name="price" required>
-                <option value="" disabled selected>Select a price range</option>
-                <option value="1">$</option>
-                <option value="2">$$</option>
-                <option value="3">$$$</option>
-                <option value="4">$$$$</option>
-              </select>
-              <br>
-      
-              <label for="location">City:</label>
-              <input id="location" name="location" type="text" placeholder="Enter your city" required>
-              <br>
-      
-              <label for="radius">How far you are willing to go:</label>
-              <input id="radius" name="radius" type="number" placeholder="Enter your radius" required>
-              <br>
-            </form>
+      <div id="host-preferences" style="display: none;">
+        <form>
+          <h1>What do you feel like eating?</h1>
+  
+          <label for="cuisine">Cuisine:</label>
+          <select id="cuisine" name="cuisine" required>
+            <option value="" disabled selected>Select a cuisine</option>
+            <option value="american">American</option>
+            <option value="italian">Italian</option>
+            <option value="mexican">Mexican</option>
+            <option value="asian">Asian</option>
+          </select>
+          <br>
+  
+          <label for="price">Price:</label>
+          <select id="price" name="price" required>
+            <option value="" disabled selected>Select a price range</option>
+            <option value="1">$</option>
+            <option value="2">$$</option>
+            <option value="3">$$$</option>
+            <option value="4">$$$$</option>
+          </select>
+          <br>
+  
+          <label for="location">City:</label>
+          <input id="location" name="location" type="text" placeholder="Enter your city" required>
+          <br>
+  
+          <label for="radius">How far you are willing to go:</label>
+          <input id="radius" name="radius" type="number" placeholder="Enter your radius" required>
+          <br>
+        </form>
 
-            <button id="preferences-submit">Submit</button>
-          </div>
-        </div>
+        <button id="preferences-submit">Submit</button>
       </div>
+      <div id="restaurantTable"></div>
+      <div id="votingSection"></div>
     </div>
-    <div id="usersList"></div>
+    <div id="rightColumn">
+      <div id="usersList"></div>
+      <div id="votingResults"></div>
+    </div>
   </div>
 
   <div id="votingButton">
     <button id="startVote">Start Vote</button>
   </div>
-  <div id="votingSection"></div>
-  <div id="votingResults"></div>
+  <!-- <div id="votingSection"></div> -->
 
   <script src="/socket.io.js"></script>
   <script src="/room.js" defer></script>

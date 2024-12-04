@@ -44,7 +44,7 @@ button.addEventListener("click", () => {
     return;
   }
   console.log("Sending message:", message);
-  socket.emit("foo", { message });
+  socket.emit("foo", { message, clientUsername });
   input.value = "";
   appendMessage({ username: clientUsername, message: message });
 });
@@ -91,6 +91,9 @@ socket.on('startVoting', (data) => {
   let currentIndex = 0;
   let userVotes = {};
   let submittedVote = false;
+  let restaurantTable = document.getElementById("restaurantTable")
+  restaurantTable.style.display = "none"
+  usersList.style.display = "none"
 
   function displayRestaurant(index) {
     socket.emit("submitCurrentVotes", { votes: userVotes })
@@ -118,7 +121,24 @@ socket.on('startVoting', (data) => {
 
     let nameElement = document.createElement('h2');
     nameElement.textContent = restaurant.name;
+    let price = restaurant.price
+    let rating  = restaurant.rating
+    let location = restaurant.location 
+    let phone = restaurant.phone
 
+    let priceElement = document.createElement("h2")
+    priceElement.textContent = "Price: " + price
+
+    let ratingElement = document.createElement("h2")
+    ratingElement.textContent = "Rating: " + rating
+
+    let locationElement = document.createElement("h2")
+    locationElement.textContent = "Location: " + location
+
+    let phoneElement = document.createElement("h2")
+    phoneElement.textContent = "Phone: " + phone
+
+  
     let pictureElement = document.createElement('img');
     pictureElement.src = restaurant.picture;
     pictureElement.alt = restaurant.name;
@@ -130,7 +150,6 @@ socket.on('startVoting', (data) => {
     mySlider.setAttribute("type", "range");
     mySlider.setAttribute("min", "1");
     mySlider.setAttribute("max", "10");
-    //mySlider.setAttribute("defaultValue", "5");
     mySlider.setAttribute("value", "5");
     mySlider.setAttribute("class", "slider");
     mySlider.setAttribute("id", "myRange");
@@ -138,7 +157,7 @@ socket.on('startVoting', (data) => {
     const textTemplate = document.createElement("h2");
     textTemplate.textContent = "Score: ";
     const sliderInfo = document.createElement("h3");
-    sliderInfo.textContent = mySlider.value;
+    sliderInfo.textContent = parseInt(mySlider.value);
     sliderDiv.appendChild(textTemplate);
     sliderDiv.appendChild(sliderInfo);
 
@@ -147,11 +166,11 @@ socket.on('startVoting', (data) => {
     })
 
     let yesButton = document.createElement('button');
-    yesButton.textContent = 'Vote!';
+    yesButton.textContent = 'Submit Vote!';
 
     yesButton.addEventListener('click', () => {
       currentIndex++;
-      userVotes[restaurant.name] = mySlider.value;
+      userVotes[restaurant.name] = parseInt(mySlider.value);
 
       //updating personal preference
       fetch('/vote', {
@@ -173,6 +192,14 @@ socket.on('startVoting', (data) => {
     restaurantDiv.appendChild(pictureElement);
     restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(sliderDiv);
+    restaurantDiv.appendChild(document.createElement("br"));
+    restaurantDiv.appendChild(priceElement);
+    restaurantDiv.appendChild(document.createElement("br"));
+    restaurantDiv.appendChild(ratingElement);
+    restaurantDiv.appendChild(document.createElement("br"));
+    restaurantDiv.appendChild(locationElement);
+    restaurantDiv.appendChild(document.createElement("br"));
+    restaurantDiv.appendChild(phoneElement);
     restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(yesButton);
     votingSection.appendChild(restaurantDiv);
@@ -273,7 +300,7 @@ function removeRow(arrIndex) {
 socket.on("nominations", (data) => {
   businesses = data.resturantData;
   business = [];
-  const middleColumn = document.getElementById("middleColumn");
+  const restaurantTable = document.getElementById("restaurantTable");
 
   businesses.forEach((item) => {
     business.push([
@@ -285,7 +312,7 @@ socket.on("nominations", (data) => {
     ]);
   });
 
-  middleColumn.innerHTML = `
+  restaurantTable.innerHTML = `
     <h2>Nominations</h2>
     <h3>Nominate a Restaurant</h3>
     <form id="restaurant-form">

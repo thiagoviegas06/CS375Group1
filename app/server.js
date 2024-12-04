@@ -747,7 +747,7 @@ io.on('connection', (socket) => {
     }
   })
     
-  socket.on("foo", ({ message }) => {
+  socket.on("foo", ({ message, clientUsername }) => {
     const roomId = socket.roomId;
 
     if (!rooms[roomId] || !rooms[roomId].sockets) {
@@ -755,7 +755,7 @@ io.on('connection', (socket) => {
       return;
     }
     let messageObj = {
-      username: socket.username || req.session.guestname || "GUEST",
+      username: clientUsername || socket.handshake.session.guestname || "GUEST",
       message: message
     }  
     console.log(messageObj)
