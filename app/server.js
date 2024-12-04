@@ -149,7 +149,7 @@ app.post('/guest-username', (req, res) => {
   const userLocation = req.body.userLocation;
   const roomID = req.body.id;
 
-  rooms[roomsID].userLocations.push(userLocation);
+  rooms[roomID].userLocations.push(userLocation);
 
   req.session.authenticated = true;
   req.session.guestname = username;
@@ -210,7 +210,8 @@ app.get("/nomination", (_, res) => {
 });
 
 app.get("/getRoomObj", (req, res) => {
-  let roomID = req.query.zip;
+  let roomID = req.query.id;
+  console.log("bananas");
   console.log(rooms[roomID]);
   res.json(rooms[roomID]);
 });
@@ -234,9 +235,13 @@ app.get('/sendYelp', async (req, res) => {
     const yelpResponse = await sendYelp(preferences, roomID);
     rooms[roomID].restaurants = getRestaurantsForVote(roomID);
     let resturantData = rooms[roomID].restaurants;
+    let leaderLoc = rooms[roomID].leaderLocation;
+    let userLocs = rooms[roomID].userLocation;
 
     for (let s of Object.values(rooms[roomID].sockets)) {
-      s.emit('nominations', { resturantData });
+      console.log("before putting into socket");
+      console.log(resturantData);
+      s.emit('nominations', { restaurants: resturantData, leaderLocation: leaderLoc, userLocation: userLocs});
     }
 
     res.json({success: "ok"});
@@ -251,7 +256,7 @@ function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=20&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=1&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -276,15 +281,14 @@ function sendYelp(pref, roomID) {
 
         for (let business of businesses) {
           let name = business.name;
-          console.log(name);
+         
           let alias = business.alias;
           let googleAlias = alias.replace(/-/g, "&");
           let bus_rating = business.rating;
-          console.log(bus_rating);
-          console.log(rating);
+        
 
           if(bus_rating > rating){
-            console.log("here"); 
+            //console.log(business);
             restaurantData[name] = {
               yelp: {
                 price: business.price,
@@ -292,11 +296,14 @@ function sendYelp(pref, roomID) {
                 location: business.location,
                 phone: business.display_phone,
                 isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
-                attributes: business.attributes || {}, // Default to an empty object if undefined
+                attributes: business.attributes || {},
+                coordinates: business.coordinates,
+                 // Default to an empty object if undefined
               },
               alias: googleAlias,
               photos: [], // Placeholder for Google photo references
             };
+            
           }
           
 
@@ -304,6 +311,7 @@ function sendYelp(pref, roomID) {
 
         // Update the currentRoom's restaurant data
         currentRoom.restaurants = restaurantData;
+        console.log(restaurantData);
         console.log(`Updated room ${roomID} with Yelp restaurant data.`);
 
         // Resolve the promise with the restaurant data
@@ -764,9 +772,20 @@ io.on('connection', (socket) => {
       rooms[roomId].restaurants.splice(index, 1);
     }
 
-    let resturantData = rooms[roomId].restaurants;
+    let restaurantData = rooms[roomId].restaurants;
+    let leaderLoc = rooms[roomId].leaderLocation;
+    let userLocs = rooms[roomId].userLocations;
     for (let s of Object.values(rooms[roomId].sockets)) {
-      s.emit('nominations', { resturantData });
+      console.log("here is the room data:"); 
+      console.log({
+        restaurants: restaurantData,
+        leaderLocation: leaderLoc,
+        userLocation: userLocs,
+    });
+
+
+    console.log(restaurantData);
+    s.emit('nominations', { restaurantData });
     }
   });
 
@@ -859,6 +878,10 @@ function getRestaurantsForVote(roomId) {
 
   return restaurants;
 }
+
+
+
+
 
 app.get("/map", (_, res)=>{
   res.sendFile(__dirname + "/public/map.html")

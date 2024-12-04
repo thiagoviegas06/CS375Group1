@@ -23,6 +23,7 @@ window.addEventListener('beforeunload', () => {
   socket.disconnect();
 });
 
+let map = null;
 let socket = io();
 let usersList = document.getElementById("usersList");
 let startVoteButton = document.getElementById("startVote");
@@ -322,14 +323,22 @@ function removeRow(arrIndex) {
 
 // Socket event to populate nominations for all users
 socket.on("nominations", (data) => {
-  businesses = data.resturantData;
-   //let leaderLocation = data.leaderLocation;
+  businesses = data.restaurants;
+
+  let leaderLocation = data.leaderLocation;
   console.log(data)
-  //console.log(leaderLocation);
+  console.log(leaderLocation);
+
+  let mapDiv = document.getElementById("map");
+  
   business = [];
   const middleColumn = document.getElementById("middleColumn");
+  //let map = initMap();
+  map.setCenter({ lat: leaderLocation.lat, lng: leaderLocation.lon });
+  mapDiv.style.display = "block";
 
-  //const coordinates = [];
+
+  const coordinates = [];
 
   businesses.forEach((item) => {
     business.push([
@@ -340,14 +349,16 @@ socket.on("nominations", (data) => {
       item.phone
     ]);
 
+    console.log(item);
+
     /*const mark = {
       position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
       title: item.name,
-    };
+    };*/
 
     //adding markers to coordinates list
 
-    coordinates.push(mark); */
+    //coordinates.push(mark); 
 
   });
 
@@ -376,6 +387,9 @@ socket.on("nominations", (data) => {
   renderTable();
   initAutocomplete();
   
+  /*coordinates.forEach((coord) => {
+    addMarker(coord, map);
+  }); */ 
   /*
   initialize(leaderLocation);
   initMap(leaderLocation)
@@ -435,7 +449,7 @@ async function loadGoogleMaps() {
     const apiKey = data.key;
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initAutoComplete`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initialize`;
     script.async = true;
     script.defer = true;
     document.body.appendChild(script);
@@ -444,24 +458,25 @@ async function loadGoogleMaps() {
   }
 }
 
-async function initMap(leaderLocation) {
-  console.log("This is the leader obj");
-  console.log(leaderLocation); 
+async function initMap() {
   const { Map } = await google.maps.importLibrary("maps");
   const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+  
 
   const map = new Map(document.getElementById("map"), {
-      center: { lat: leaderLocation.lat, lng: leaderLocation.lon },
+      center: { lat: 39.9526, lng: 75.16522 },
       zoom: 12,
       mapId: "6747d039df5a2bde",
   });
 
+  addMarker({ lat: 39.9526, lng: -75.16522 })
+
   return map; // Return the map instance for further use
 }
 
-let markersArray = [];
 
 function addMarker(coord, map) {
+  
   const marker = new google.maps.marker.AdvancedMarkerElement({
       map: map,
       position: coord.position,
@@ -474,8 +489,6 @@ function addMarker(coord, map) {
   marker.element.addEventListener("click", function () {
       infoWindow.open(map, marker);
   });
-
-  markersArray.push(marker);
 }
 
 function removeMarker(index) {
@@ -487,10 +500,10 @@ function removeMarker(index) {
   }
 }
 
-function initialize(leaderLocation) {
+async function initialize() {
   // Call both initializers within the single callback
-      initMap();
-      initAutocomplete(leaderLocation);
+      map = await (initMap());
+      initAutocomplete();
   }
  
 

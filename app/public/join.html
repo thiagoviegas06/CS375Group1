@@ -26,7 +26,8 @@
     let userId = document.getElementById("userId");
     let userLocation = {
       lat: null,
-      lon: null
+      lon: null,
+      name: null
     };
 
     const errorSection = document.getElementById("error");
@@ -34,6 +35,7 @@
     
     joinButton.addEventListener("click", async () => {
       let username = userId.value;
+      userLocation.name = username;
       let id = roomId.value;
       fetch("/guest-username", {
         method: 'POST', // HTTP method
