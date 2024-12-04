@@ -349,16 +349,16 @@ socket.on("nominations", (data) => {
       item.phone
     ]);
 
-    console.log(item);
+    console.log(item.coordinates);
 
-    /*const mark = {
+    const mark = {
       position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
       title: item.name,
-    };*/
+    };
 
     //adding markers to coordinates list
 
-    //coordinates.push(mark); 
+    coordinates.push(mark); 
 
   });
 
@@ -387,9 +387,9 @@ socket.on("nominations", (data) => {
   renderTable();
   initAutocomplete();
   
-  /*coordinates.forEach((coord) => {
+  coordinates.forEach((coord) => {
     addMarker(coord, map);
-  }); */ 
+  }); 
   /*
   initialize(leaderLocation);
   initMap(leaderLocation)

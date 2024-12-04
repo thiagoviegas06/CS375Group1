@@ -209,12 +209,7 @@ app.get("/nomination", (_, res) => {
   res.sendFile(__dirname + "/public/nomination.html")
 });
 
-app.get("/getRoomObj", (req, res) => {
-  let roomID = req.query.id;
-  console.log("bananas");
-  console.log(rooms[roomID]);
-  res.json(rooms[roomID]);
-});
+
 
 app.get('/sendYelp', async (req, res) => {
   try {
@@ -239,8 +234,6 @@ app.get('/sendYelp', async (req, res) => {
     let userLocs = rooms[roomID].userLocation;
 
     for (let s of Object.values(rooms[roomID].sockets)) {
-      console.log("before putting into socket");
-      console.log(resturantData);
       s.emit('nominations', { restaurants: resturantData, leaderLocation: leaderLoc, userLocation: userLocs});
     }
 
@@ -872,7 +865,9 @@ function getRestaurantsForVote(roomId) {
       rating: details.yelp.rating,
       location: details.yelp.location.display_address.join(", "),
       phone: details.yelp.phone,
-      picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop", // Adding a static picture
+      picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop",
+      coordinates: details.yelp.coordinates,
+      menu: details.yelp.attributes.menu_url,
     });
   });
 
