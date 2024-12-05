@@ -32,8 +32,8 @@
     <div id="error" style="color: red;"></div>
 
     <script type = "module">
-        import { getLocation, showError, storePosition, initAutocomplete, setUserLocation } from './locationHelper.js';
-
+        import { getLocation, showError, storePosition, initAutocomplete } from './locationHelper.js';
+        let address1Field = document.getElementById("res-address");
         let profileButton = document.getElementById("myprofile");
         let button = document.getElementById("send");
         let idsDiv = document.getElementById("ids");
@@ -98,7 +98,6 @@
 
         const submitLocation = document.getElementById("submit");
         submitLocation.addEventListener("click", () => {
-            setUserLocation(userLocation);
             popup.style.display = "none";
             backdrop.style.display = "none";
 
@@ -106,7 +105,7 @@
         })
 
         noButton.addEventListener("click", () => {
-            initAutocomplete(); // Call directly
+            initAutocomplete(address1Field, userLocation); // Call directly
             let hideDiv = document.getElementById("hide");
             hideDiv.style.display = "block";
         });
@@ -124,7 +123,7 @@
     </script>
 
      <script
-        src="https://maps.googleapis.com/maps/api/js?key=&libraries=places&v=weekly&callback=initAutocomplete"
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8_xGm_weCCNyOXTZeBwCacPSOS7uaDd0&libraries=places&v=weekly&callback=initAutocomplete"
         defer async>
      </script>
     

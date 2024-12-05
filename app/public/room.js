@@ -326,8 +326,6 @@ socket.on("nominations", (data) => {
   businesses = data.restaurants;
 
   let leaderLocation = data.leaderLocation;
-  console.log(data)
-  console.log(leaderLocation);
 
   let mapDiv = document.getElementById("map");
   
@@ -349,8 +347,6 @@ socket.on("nominations", (data) => {
       item.phone
     ]);
 
-    console.log(item.coordinates);
-
     const mark = {
       position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
       title: item.name,
@@ -367,7 +363,6 @@ socket.on("nominations", (data) => {
     <h3>Nominate a Restaurant</h3>
     <form id="restaurant-form">
       <input type="text" id="res-address" placeholder="Type restaurant address" />
-      <button type="submit">Add Restaurant</button>
     </form>
     <table>
       <thead>
@@ -378,6 +373,7 @@ socket.on("nominations", (data) => {
           <th>Rating</th>
           <th>Address</th>
           <th>Phone Number</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -431,7 +427,6 @@ const fillInAddress = () => {
       console.error("No geometry available for this place.");
       return;
   }
-  console.log(place);
 
   const rowData = {name: place.name, 
                    price: priceMapping[place.price_level], 
@@ -441,6 +436,21 @@ const fillInAddress = () => {
                    picture: place.photos[0]};
   socket.emit("addRestaurant", { restaurant : rowData })
 };
+
+socket.on('addedRestaurant', (data) => {
+  newbusiness = []
+  data.restaurants.map((restaurant) => {
+    singleitem = [restaurant.name,
+      restaurant.price,
+      restaurant.rating,
+      restaurant.location,
+      restaurant.phone
+    ]
+    newbusiness.push(singleitem)
+  })
+  business = newbusiness;
+  renderTable();
+})
 
 async function loadGoogleMaps() {
   try {
@@ -461,6 +471,7 @@ async function loadGoogleMaps() {
 async function initMap() {
   const { Map } = await google.maps.importLibrary("maps");
   const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+  //const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
   
 
   const map = new Map(document.getElementById("map"), {
@@ -476,10 +487,14 @@ async function initMap() {
 
 
 function addMarker(coord, map) {
-  
+  /*const pinGlyphYellow1 = new PinElement({
+    background: "#FFFD55",
+    borderColor: "#FFFD55"
+  });*/
   const marker = new google.maps.marker.AdvancedMarkerElement({
       map: map,
       position: coord.position,
+      //content: pinGlyphYellow1
   });
 
   const infoWindow = new google.maps.InfoWindow({
