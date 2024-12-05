@@ -88,7 +88,19 @@
     <button id="startVote">Start Vote</button>
   </div>
   <div id="map" style="display: none;"></div>
-  <div id="votingSection"></div>
+  <div id ="votingSection"></div>
+  <div id="restaurantTable" style="display: none">
+    <p>Each users distance to restaurant</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Distance (time) </th>
+        </tr>
+      </thead>
+      <tbody id ="bodyDistance"></tbody>
+    </table>
+  </div>
   <div id="votingResults"></div>
 
   <script src="/socket.io.js"></script>

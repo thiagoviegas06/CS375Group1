@@ -29,8 +29,9 @@ export function storePosition(position) {
     return { lat: latitude, lon: longitude };
 }
 
-export function initAutocomplete() {
-    address1Field = document.querySelector("#res-address");
+export function initAutocomplete(address1Field, userLocation) {
+    //address1Field = document.querySelector("#res-address");
+    let autocomplete;
     const googleMapAutoOption = {
         componentRestrictions: { country: ["us"] },
         fields: ["geometry"],
@@ -38,12 +39,10 @@ export function initAutocomplete() {
     };
     autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
     address1Field.focus();
-    autocomplete.addListener("place_changed", setUserLocation);
+    autocomplete.addListener("place_changed", setUserLocation.bind(null, userLocation));
+    function setUserLocation(userLocation) {
+        const place = autocomplete.getPlace();
+        userLocation.lat = place.geometry.location.lat();
+        userLocation.lon = place.geometry.location.lng();
+    }
 };
-
-export function setUserLocation(userLocation) {
-    const place = autocomplete.getPlace();
-    userLocation.lat = place.geometry.location.lat();
-    userLocation.lon = place.geometry.location.lng();
-    console.log(userLocation);
-}
