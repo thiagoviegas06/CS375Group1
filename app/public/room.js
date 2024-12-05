@@ -433,7 +433,10 @@ const fillInAddress = () => {
                    rating: place.rating, 
                    location: place.formatted_address,
                    phone: place.formatted_phone_number,
-                   picture: place.photos[0]};
+                   picture: place.photos[0],
+                   coordinates: {latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng()},
+                   menu: ""
+                  };
   socket.emit("addRestaurant", { restaurant : rowData });
   address1Field = document.getElementById("res-address").value = "";
 };
