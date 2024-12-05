@@ -267,7 +267,7 @@ function sendYelp(pref, roomID) {
 
     // Make the Yelp API request
     axios
-      .request(options)//Fail
+      .request(options)
       .then((yelpRes) => {
         let businesses = yelpRes.data.businesses;
         let restaurantData = {}; // Dictionary to hold restaurant details
@@ -305,7 +305,6 @@ function sendYelp(pref, roomID) {
 
         // Update the currentRoom's restaurant data
         currentRoom.restaurants = restaurantData;
-        console.log(restaurantData);
         console.log(`Updated room ${roomID} with Yelp restaurant data.`);
 
         // Resolve the promise with the restaurant data
@@ -757,30 +756,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('deleteRestaurant', (data) => {
-    const name = data.restaurant;
+    const idx = data.idx;
     const roomId = socket.roomId;
+    /*const name = data.restaurant;
     const room = rooms[roomId];
-
-    console.log(rooms[roomId].restaurants)
-    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);
-    if (index !== -1) {
-      rooms[roomId].restaurants.splice(index, 1);
+    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);*/
+    if (idx !== -1) {
+      rooms[roomId].restaurants.splice(idx, 1);
     }
-
     let restaurantData = rooms[roomId].restaurants;
-    let leaderLoc = rooms[roomId].leaderLocation;
-    let userLocs = rooms[roomId].userLocations;
     for (let s of Object.values(rooms[roomId].sockets)) {
-      console.log("here is the room data:");
-      console.log({
-        restaurants: restaurantData,
-        leaderLocation: leaderLoc,
-        userLocation: userLocs,
-      });
-
-
-      console.log(restaurantData);
-      s.emit('nominations', { restaurantData });
+      s.emit('changedRestaurant', { restaurants: restaurantData });
     }
   });
 
@@ -793,7 +779,7 @@ io.on('connection', (socket) => {
 
     let resturantData = rooms[roomId].restaurants;
     for (let s of Object.values(rooms[roomId].sockets)) {
-      s.emit('addedRestaurant', { restaurants: resturantData });
+      s.emit('changedRestaurant', { restaurants: resturantData });
     }
   })
 

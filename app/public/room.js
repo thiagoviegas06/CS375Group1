@@ -316,9 +316,9 @@ const renderTable = () => {
 };
 
 function removeRow(arrIndex) {
-  const name = business[arrIndex][0];
-  removeCell(arrIndex);
-  socket.emit("deleteRestaurant", { restaurant : name })
+  //const name = business[arrIndex][0];
+  //removeCell(arrIndex);
+  socket.emit("deleteRestaurant", { idx : arrIndex })
 };
 
 // Socket event to populate nominations for all users
@@ -434,10 +434,11 @@ const fillInAddress = () => {
                    location: place.formatted_address,
                    phone: place.formatted_phone_number,
                    picture: place.photos[0]};
-  socket.emit("addRestaurant", { restaurant : rowData })
+  socket.emit("addRestaurant", { restaurant : rowData });
+  address1Field = document.getElementById("res-address").value = "";
 };
 
-socket.on('addedRestaurant', (data) => {
+socket.on('changedRestaurant', (data) => {
   newbusiness = []
   data.restaurants.map((restaurant) => {
     singleitem = [restaurant.name,
