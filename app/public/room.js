@@ -92,7 +92,7 @@ startVoteButton.addEventListener("click", () => {
 });
 
 socket.on('startVoting', (data) => {
-  
+
   const drivingTime = data.times;
   const restaurants = data.restaurants;
   let currentIndex = 0;
@@ -100,7 +100,7 @@ socket.on('startVoting', (data) => {
   let submittedVote = false;
 
   console.log("these are the driving times: ");
-  console.log(drivingTime); 
+  console.log(drivingTime);
 
   function displayRestaurant(index) {
     socket.emit("submitCurrentVotes", { votes: userVotes })
@@ -138,26 +138,26 @@ socket.on('startVoting', (data) => {
     while (timeBody.firstChild) {
       timeBody.removeChild(timeBody.firstChild);
     }
-    
+
     // Iterate through the drivingTime object
     Object.entries(drivingTime).forEach(([user, times]) => {
       // Create a new row
       const newRow = document.createElement("tr");
-    
+
       // Create and append user cell
       const nameCell = document.createElement("td");
       nameCell.textContent = user; // Add the user's name
       newRow.appendChild(nameCell);
-    
+
       // Create and append driving time cell
       const distanceCell = document.createElement("td");
       distanceCell.textContent = times[curRest] || "N/A"; // Get time for the current restaurant or fallback to "N/A"
       newRow.appendChild(distanceCell);
-    
+
       // Append the row to the table body
       timeBody.appendChild(newRow);
     });
-    
+
 
     let pictureElement = document.createElement('img');
     pictureElement.src = restaurant.picture;
@@ -256,20 +256,20 @@ document.getElementById("yesNoDropdown").addEventListener("change", function () 
 const preferencesSubmit = document.getElementById('preferences-submit');
 preferencesSubmit.addEventListener("click", (event) => {
   event.preventDefault();
-  let cuisine  = document.getElementById("cuisine");
-  let price    = document.getElementById("price");
-  let city     = document.getElementById("location");
-  let radius   = document.getElementById("radius");
+  let cuisine = document.getElementById("cuisine");
+  let price = document.getElementById("price");
+  let city = document.getElementById("location");
+  let radius = document.getElementById("radius");
 
   let realRadius = radius.value * 1609.34;
   // hehe no negative allowed 
-  if(realRadius > 40000 || realRadius < 0){
+  if (realRadius > 40000 || realRadius < 0) {
     realRadius = 40000;
   }
 
   let ratingVal = -10;
 
-  if(rating_flag){
+  if (rating_flag) {
     ratingVal = selectRating.value;
   }
 
@@ -277,19 +277,19 @@ preferencesSubmit.addEventListener("click", (event) => {
   const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${realRadius}&roomID=${roomId}&rating=${ratingVal}`;
 
   fetch(url)
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    return response.json();
-  })
-  .then((data) => {
-    preferencesDiv.style.display = 'none';
-  })
-  .catch((error) => {
-    console.error("Error fetching Yelp data:", error.message);
-  });
+      return response.json();
+    })
+    .then((data) => {
+      preferencesDiv.style.display = 'none';
+    })
+    .catch((error) => {
+      console.error("Error fetching Yelp data:", error.message);
+    });
 });
 
 
@@ -332,9 +332,7 @@ const renderTable = () => {
 };
 
 function removeRow(arrIndex) {
-  //const name = business[arrIndex][0];
-  //removeCell(arrIndex);
-  socket.emit("deleteRestaurant", { idx : arrIndex })
+  socket.emit("deleteRestaurant", { idx: arrIndex });
 };
 
 // Socket event to populate nominations for all users
@@ -344,15 +342,11 @@ socket.on("nominations", (data) => {
   let leaderLocation = data.leaderLocation;
 
   let mapDiv = document.getElementById("map");
-  
+
   business = [];
   const middleColumn = document.getElementById("middleColumn");
-  //let map = initMap();
   map.setCenter({ lat: leaderLocation.lat, lng: leaderLocation.lon });
   mapDiv.style.display = "block";
-
-
-  const coordinates = [];
 
   businesses.forEach((item) => {
     business.push([
@@ -367,11 +361,7 @@ socket.on("nominations", (data) => {
       position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
       title: item.name,
     };
-
-    //adding markers to coordinates list
-
-    coordinates.push(mark); 
-
+    item.marker = addMarker(mark, map);
   });
 
   middleColumn.innerHTML = `
@@ -398,12 +388,8 @@ socket.on("nominations", (data) => {
 
   renderTable();
   initAutocomplete();
-  
-  coordinates.forEach((coord) => {
-    addMarker(coord, map);
-  });
-  
-  addCustomMarker({position: {lat: leaderLocation.lat, lng: leaderLocation.lon}, title: "Leader"}, map); 
+
+  addCustomMarker({ position: { lat: leaderLocation.lat, lng: leaderLocation.lon }, title: "Leader" }, map);
   /*
   initialize(leaderLocation);
   initMap(leaderLocation)
@@ -430,9 +416,9 @@ const priceMapping = {
 const initAutocomplete = () => {
   address1Field = document.getElementById("res-address")
   const googleMapAutoOption = {
-      componentRestrictions: { country: ["us"] },
-      fields: ["name", "formatted_address", "geometry", "rating", "price_level", "formatted_phone_number", "photos"],
-      types: ["restaurant", "cafe"],
+    componentRestrictions: { country: ["us"] },
+    fields: ["name", "formatted_address", "geometry", "rating", "price_level", "formatted_phone_number", "photos"],
+    types: ["restaurant", "cafe"],
   };
   autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
   address1Field.focus();
@@ -442,33 +428,43 @@ const initAutocomplete = () => {
 const fillInAddress = () => {
   const place = autocomplete.getPlace();
   if (!place.geometry) {
-      console.error("No geometry available for this place.");
-      return;
+    console.error("No geometry available for this place.");
+    return;
   }
 
-  const rowData = {name: place.name, 
-                   price: priceMapping[place.price_level], 
-                   rating: place.rating, 
-                   location: place.formatted_address,
-                   phone: place.formatted_phone_number,
-                   picture: place.photos[0],
-                   coordinates: {latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng()},
-                   menu: ""
-                  };
-  socket.emit("addRestaurant", { restaurant : rowData });
+  const rowData = {
+    name: place.name,
+    price: priceMapping[place.price_level],
+    rating: place.rating,
+    location: place.formatted_address,
+    phone: place.formatted_phone_number,
+    picture: place.photos[0],
+    coordinates: { latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng() },
+    menu: ""
+  };
+  socket.emit("addRestaurant", { restaurant: rowData });
   address1Field = document.getElementById("res-address").value = "";
 };
 
 socket.on('changedRestaurant', (data) => {
+  businesses.map((restaurant) => {
+    removeMarker(restaurant.marker);
+  })
+  businesses = data.restaurants;
   newbusiness = []
-  data.restaurants.map((restaurant) => {
+  businesses.map((restaurant) => {
     singleitem = [restaurant.name,
-      restaurant.price,
-      restaurant.rating,
-      restaurant.location,
-      restaurant.phone
-    ]
+    restaurant.price,
+    restaurant.rating,
+    restaurant.location,
+    restaurant.phone,
+    ];
     newbusiness.push(singleitem)
+    const mark = {
+      position: { lat: restaurant.coordinates.latitude, lng: restaurant.coordinates.longitude },
+      title: restaurant.name,
+    };
+    restaurant.marker = addMarker(mark, map);
   })
   business = newbusiness;
   renderTable();
@@ -493,18 +489,16 @@ async function loadGoogleMaps() {
 async function initMap() {
   const { Map } = await google.maps.importLibrary("maps");
   const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
-  
+
   const map = new Map(document.getElementById("map"), {
-      center: { lat: 39.9526, lng: 75.16522 },
-      zoom: 12,
-      mapId: "6747d039df5a2bde",
+    center: { lat: 39.9526, lng: 75.16522 },
+    zoom: 12,
+    mapId: "6747d039df5a2bde",
   });
 
 
   return map; // Return the map instance for further use
 }
-
-
 
 function addMarker(coord, map) {
   /*const pinGlyphYellow1 = new PinElement({
@@ -512,18 +506,20 @@ function addMarker(coord, map) {
     borderColor: "#FFFD55"
   });*/
   const marker = new google.maps.marker.AdvancedMarkerElement({
-      map: map,
-      position: coord.position,
-      //content: pinGlyphYellow1
+    map: map,
+    position: coord.position,
+    //content: pinGlyphYellow1
   });
 
   const infoWindow = new google.maps.InfoWindow({
-      content: coord.title,
+    content: coord.title,
   });
 
   marker.element.addEventListener("click", function () {
-      infoWindow.open(map, marker);
+    infoWindow.open(map, marker);
   });
+
+  return marker;
 }
 
 function addCustomMarker(coord, map) {
@@ -554,21 +550,16 @@ function addCustomMarker(coord, map) {
 }
 
 
-function removeMarker(index) {
-  if (index >= 0 && index < markersArray.length && markersArray[index]) {
-      markersArray[index].setMap(null);
-      markersArray.splice(index, 1);
-  } else {
-      console.error("Invalid marker index");
-  }
+function removeMarker(marker) {
+  marker.setMap(null);
 }
 
 async function initialize() {
   // Call both initializers within the single callback
-      map = await (initMap());
-      initAutocomplete();
-  }
- 
+  map = await (initMap());
+  initAutocomplete();
+}
+
 
 
 loadGoogleMaps();

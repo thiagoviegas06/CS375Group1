@@ -791,19 +791,6 @@ io.on('connection', (socket) => {
       s.emit('changedRestaurant', { restaurants: resturantData });
     }
   });
-
-  socket.on('addRestaurant', (data) => {
-    const rowData = data.restaurant;
-    const roomId = socket.roomId;
-    const room = rooms[roomId];
-
-    room.restaurants.push(rowData);
-
-    let resturantData = rooms[roomId].restaurants;
-    for (let s of Object.values(rooms[roomId].sockets)) {
-      s.emit('nominations', { resturantData });
-    }
-  })
     
   socket.on("foo", ({ message, clientUsername }) => {
     const roomId = socket.roomId;
