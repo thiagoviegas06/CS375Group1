@@ -233,12 +233,11 @@ socket.on('startVoting', (data) => {
 });
 
 socket.on('votingResults', (data) => {
-  const results = data.results;
+  const results = data.results.sort((a, b) => a.score > b.score);
   let resultsSection = document.getElementById('votingResults');
   resultsSection.innerHTML = '<h2>Voting Results</h2>';
 
   let resultsList = document.createElement('ul');
-
   for (const restaurant of Object.values(results)) {
     let listItem = document.createElement('li');
     listItem.textContent = `${restaurant.name}: ${restaurant.score}`;
@@ -427,15 +426,13 @@ const fillInAddress = () => {
       console.error("No geometry available for this place.");
       return;
   }
-  console.log(place);
-
   const rowData = {
     name: place.name,
     price: priceMapping[place.price_level],
     rating: place.rating,
     location: place.formatted_address,
     phone: place.formatted_phone_number,
-    picture: place.photos[0],
+    picture: place.photos ? place.photos[0]?.getUrl() : "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop",
     coordinates: { latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng() },
     menu: ""
   };
@@ -448,6 +445,7 @@ socket.on('changedRestaurant', (data) => {
     removeMarker(restaurant.marker);
   });
   businesses = data.restaurants;
+  console.log(businesses);
   newbusiness = []
   businesses.map((restaurant) => {
     singleitem = [restaurant.name,
