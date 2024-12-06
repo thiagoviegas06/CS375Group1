@@ -13,21 +13,36 @@
     <input type="text" id="userId" name="userId"><br><br>
     <label for="roomId">Room Code:</label>
     <input type="text" id="roomId" name="roomId"><br><br>
+    <p>Would you like to provide your current location? </p>
+    <button onclick="getLocation()">Yes</button>
+    <button id="no">No</button>
+    <div id = "inputField"></div>
     <button class="button" id="join">Join chatroom</button>
   </div>
+  <div id = "error"></div>
   <script>
     let joinButton = document.getElementById("join");
     let roomId = document.getElementById("roomId");
     let userId = document.getElementById("userId");
+    let userData = {
+      lat: null,
+      lon: null,
+      name: null
+    };
 
+    const errorSection = document.getElementById("error");
+
+    
     joinButton.addEventListener("click", async () => {
       let username = userId.value;
+      userData.name = username;
+      let id = roomId.value;
       fetch("/guest-username", {
         method: 'POST', // HTTP method
         headers: {
           'Content-Type': 'application/json' // Send data as JSON
         },
-        body: JSON.stringify({ username }) // Convert the JavaScript object to a JSON string
+        body: JSON.stringify({ userData, id }) // Convert the JavaScript object to a JSON string
       });
 
       // will redirect to new chatroom
@@ -44,6 +59,39 @@
         }
     });
   });
+
+  function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(storePosition, showError);
+      } else {
+        error.innerHTML = "Geolocation is not supported by this browser.";
+      }
+    }
+
+    function showError(error) {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          x.innerHTML = "User denied the request for Geolocation.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          x.innerHTML = "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          x.innerHTML = "The request to get user location timed out.";
+          break;
+        case error.UNKNOWN_ERROR:
+          x.innerHTML = "An unknown error occurred.";
+          break;
+      }
+    }
+
+    function storePosition(position) {
+      let latitude = position.coords.latitude;
+      let longitude = position.coords.longitude;
+      userData.lat = latitude;
+      userData.lon = longitude;
+    }
+
   </script>
 </body>
 </html>

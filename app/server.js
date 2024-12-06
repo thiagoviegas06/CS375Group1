@@ -142,12 +142,21 @@ app.post('/logout', (req, res) => {
 });
 
 app.post('/guest-username', (req, res) => {
-  const username = req.body.username;
+  const username = req.body.userData.name;
+  // add UserLocation to room Obj
+  const userLocation = {lat: req.body.userData.lat, lon: req.body.userData.lon};
+  const roomID = req.body.id;
+  rooms[roomID].userLocations.push(userLocation);
   req.session.authenticated = true;
   req.session.guestname = username;
   req.session.save()
 
   res.json({ success: true, message: 'Guest username successful' });
+});
+
+
+app.get('/test', (req, res) => {
+  res.sendFile(__dirname + "/public/test.html");
 });
 
 app.get('/get-username', (req, res) => {
@@ -198,28 +207,32 @@ app.get("/nomination", (_, res) => {
 
 app.get('/sendYelp', async (req, res) => {
   try {
-    const { cuisine, price, city, radius, roomID } = req.query;
-
-    if (!cuisine || !price || !city || !radius || !roomID) {
+    const { cuisine, price, city, radius, roomID, rating } = req.query;
+    console.log({ cuisine, price, city, radius, roomID, rating })
+    if (!cuisine || !price || !city || !radius || !roomID || !rating) {
       return res.status(400).json({ error: "Missing required parameters" });
     }
 
     const preferences = {
-      cuisine : cuisine,
-      price : price,
-      city : city,
-      radius : radius
+      cuisine: cuisine,
+      price: price,
+      city: city,
+      radius: radius,
+      rating: rating
     };
+    //console.log(preferences);
 
     const yelpResponse = await sendYelp(preferences, roomID);
     rooms[roomID].restaurants = getRestaurantsForVote(roomID);
     let resturantData = rooms[roomID].restaurants;
+    let leaderLoc = rooms[roomID].leaderLocation;
+    let userLocs = rooms[roomID].userLocation;
 
     for (let s of Object.values(rooms[roomID].sockets)) {
-      s.emit('nominations', { resturantData });
+      s.emit('nominations', { restaurants: resturantData, leaderLocation: leaderLoc, userLocation: userLocs });
     }
 
-    res.json({success: "ok"});
+    res.json({ success: "ok" });
 
   } catch (error) {
     console.error("Error in /sendYelp:", error.message);
@@ -227,11 +240,12 @@ app.get('/sendYelp', async (req, res) => {
   }
 });
 
+
 function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&limit=1&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=1&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -252,24 +266,36 @@ function sendYelp(pref, roomID) {
       .then((yelpRes) => {
         let businesses = yelpRes.data.businesses;
         let restaurantData = {}; // Dictionary to hold restaurant details
+        let rating = pref.rating;
 
         for (let business of businesses) {
           let name = business.name;
+
           let alias = business.alias;
           let googleAlias = alias.replace(/-/g, "&");
+          let bus_rating = business.rating;
 
-          restaurantData[name] = {
-            yelp: {
-              price: business.price,
-              rating: business.rating,
-              location: business.location,
-              phone: business.display_phone,
-              isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
-              attributes: business.attributes || {}, // Default to an empty object if undefined
-            },
-            alias: googleAlias,
-            photos: [], // Placeholder for Google photo references
-          };
+
+          if (bus_rating > rating) {
+            //console.log(business);
+            restaurantData[name] = {
+              yelp: {
+                price: business.price,
+                rating: business.rating,
+                location: business.location,
+                phone: business.display_phone,
+                isOpen: business.hours?.[0]?.is_open_now || null, // Use optional chaining to prevent errors
+                attributes: business.attributes || {},
+                coordinates: business.coordinates,
+                // Default to an empty object if undefined
+              },
+              alias: googleAlias,
+              photos: [], // Placeholder for Google photo references
+            };
+
+          }
+
+
         }
 
         // Update the currentRoom's restaurant data
@@ -280,6 +306,7 @@ function sendYelp(pref, roomID) {
         resolve(restaurantData);
       })
       .catch((error) => {
+        console.log(error);
         console.error(`Error fetching Yelp data: ${error.message}`);
         reject(error); // Reject the promise if the request fails
       });
@@ -519,6 +546,8 @@ let rooms = {
     votes: {},
     usersFinishedVoting: [],
     restaurants: [],
+    userLocations: [],
+    leaderLocation: {}
   },
 };
 
@@ -565,6 +594,8 @@ function updateVotingResults(roomId) {
 }
 
 app.post('/create', (req, res) => {
+  const { userLocation } = req.body;
+  console.log(userLocation);
   let roomId = generateRoomCode();
   rooms[roomId] = {
     users: [],
@@ -572,7 +603,9 @@ app.post('/create', (req, res) => {
     votingActive: false,
     votes: {},
     usersFinishedVoting: [],
-    restaurants: []
+    restaurants: [],
+    userLocations: [],
+    leaderLocation: userLocation
   };
   return res.json({ roomId });
 });
@@ -599,9 +632,6 @@ app.get('/nominations-call', (req, res) => {
       });
     });
 });
-
-
-
 
 app.get('/room/:roomId', (req, res) => {
   let { roomId } = req.params;
@@ -678,10 +708,12 @@ io.on('connection', (socket) => {
     console.log(`Socket ${socket.id} disconnected`);
   });
 
-  socket.on('startVoting', () => {
+  socket.on('startVoting', async () => {
     const roomId = socket.roomId;
     const room = rooms[roomId];
     const user = room.users.find(u => u.socketId === socket.id);
+
+    const restaurantTimes = await getDrivingDistance(roomId);
 
     if (!user || !user.isPartyLeader) {
       return;
@@ -692,7 +724,7 @@ io.on('connection', (socket) => {
     room.usersFinishedVoting = [];
 
     for (let s of Object.values(room.sockets)) {
-      s.emit('startVoting', { restaurants: rooms[roomId].restaurants });
+      s.emit('startVoting', { restaurants: rooms[roomId].restaurants, times: restaurantTimes });
     }
   });
 
@@ -718,19 +750,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('deleteRestaurant', (data) => {
-    const name = data.restaurant;
+    const idx = data.idx;
     const roomId = socket.roomId;
+    /*const name = data.restaurant;
     const room = rooms[roomId];
-
-    console.log(rooms[roomId].restaurants)
-    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);
-    if (index !== -1) {
-      rooms[roomId].restaurants.splice(index, 1);
+    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);*/
+    if (idx !== -1) {
+      rooms[roomId].restaurants.splice(idx, 1);
     }
-
-    let resturantData = rooms[roomId].restaurants;
+    let restaurantData = rooms[roomId].restaurants;
     for (let s of Object.values(rooms[roomId].sockets)) {
-      s.emit('nominations', { resturantData });
+      s.emit('changedRestaurant', { restaurants: restaurantData });
     }
   });
 
@@ -743,7 +773,7 @@ io.on('connection', (socket) => {
 
     let resturantData = rooms[roomId].restaurants;
     for (let s of Object.values(rooms[roomId].sockets)) {
-      s.emit('nominations', { resturantData });
+      s.emit('changedRestaurant', { restaurants: resturantData });
     }
   })
     
@@ -818,10 +848,95 @@ function getRestaurantsForVote(roomId) {
       location: details.yelp.location.display_address.join(", "),
       phone: details.yelp.phone,
       picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop", // Adding a static picture
+      coordinates: details.yelp.coordinates,
+      menu: details.yelp.attributes.menu_url,
     });
   });
 
   return restaurants;
+}
+
+async function getDrivingDistance(roomID) {
+  // Get All restaurants
+  let restaurants = rooms[roomID].restaurants;
+  let restCoordinates = [];
+  // Prepare coordinates for restaurants
+  Object.entries(restaurants).forEach(([_, details]) => {
+    restCoordinates.push({
+      name: details.name,
+      coordinates: details.coordinates // coordinates = {latitude: val, longitude: val}
+    });
+  });
+  console.log("these are the cords");
+  console.log(restCoordinates);
+  // Prepare destination coordinates
+  let destination_url = restCoordinates
+  .map(cord => `${cord.coordinates.latitude},${cord.coordinates.longitude}`)
+  .join("|");
+  console.log("this is the users object");
+  console.log(rooms[roomID].users);
+  let userOBJ = rooms[roomID].users;
+  let usernames = []
+  userOBJ.forEach((user)=>{
+    console.log(user.username);
+    usernames.push(user.username);
+  })
+  // Prepare user locations and leader location
+  let users = rooms[roomID].userLocations;
+  let leader = rooms[roomID].leaderLocation;
+  let origin_url = `${leader.lat},${leader.lon}`;  // Leader location
+  console.log(users);
+  console.log(usernames);
+  // Add user locations to the origin_url
+  users.forEach(user => {
+    if(user.lat !== null && user.lon !== null){
+      origin_url = origin_url + "|" + `${user.lat},${user.lon}`;
+    }
+    usernames.push[user.name];
+  });
+  // Build the Distance Matrix API URL
+  let url = `https://maps.googleapis.com/maps/api/distancematrix/json?` +
+            `origins=${origin_url}&` +
+            `destinations=${destination_url}&` +
+            `units=imperial&` +
+            `key=${googleKey}`;
+  console.log(url);
+  try {
+    // Make the API request
+    const response = await axios.get(url);
+    const data = response.data;
+    if (data.status === "OK") {
+      // Create the container to store time distances
+      let timeContainer = {};
+      // Iterate through rows (origins: leader + users)
+      for (let i = 0; i < data.rows.length; i++) {
+        let userDistance = usernames[i];
+        //let currentUser = i === 0 ? "leader" : users[i - 1]?.title || `user_${i}`; // Leader or user
+        let currentElements = data.rows[i].elements; // Distances to destinations
+        // Iterate through destination elements (restaurants)
+        currentElements.forEach((element, j) => {
+          if (element.status === "OK") {
+            // Initialize user in timeContainer if needed
+            if (!timeContainer[userDistance]) {
+              timeContainer[userDistance] = {};
+            }
+            // Map restaurant name to duration
+            timeContainer[userDistance][restCoordinates[j].name] = element.duration.text;
+          }
+        });
+      }
+      console.log("This is the time distance from each user to each restaurant");
+      console.log(timeContainer);
+      // Return the constructed timeContainer
+      return timeContainer;
+    } else {
+      console.error("API Error:", data.error_message);
+      return null; // Return null if there's an API error
+    }
+  } catch (error) {
+    console.error("Error fetching distance data:", error);
+    return null; // Return null in case of an error
+  }
 }
 
 app.get("/map", (_, res)=>{

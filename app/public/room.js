@@ -87,12 +87,13 @@ startVoteButton.addEventListener("click", () => {
 });
 
 socket.on('startVoting', (data) => {
+  const drivingTime = data.times;
   const restaurants = data.restaurants;
   let currentIndex = 0;
   let userVotes = {};
   let submittedVote = false;
-  let restaurantTable = document.getElementById("restaurantTable")
-  restaurantTable.style.display = "none"
+  let drivingTable = document.getElementById("drivingTable")
+  drivingTable.style.display = "block"
   usersList.style.display = "none"
 
   function displayRestaurant(index) {
@@ -121,6 +122,30 @@ socket.on('startVoting', (data) => {
 
     let nameElement = document.createElement('h2');
     nameElement.textContent = restaurant.name;
+
+    let curRest = restaurant.name;
+    const timeBody = document.getElementById("bodyDistance");
+
+    while (timeBody.firstChild) {
+      timeBody.removeChild(timeBody.firstChild);
+    }
+
+    // Iterate through the drivingTime object
+    Object.entries(drivingTime).forEach(([user, times]) => {
+      // Create a new row
+      const newRow = document.createElement("tr");
+      // Create and append user cell
+      const nameCell = document.createElement("td");
+      nameCell.textContent = user; // Add the user's name
+      newRow.appendChild(nameCell);
+      // Create and append driving time cell
+      const distanceCell = document.createElement("td");
+      distanceCell.textContent = times[curRest] || "N/A"; // Get time for the current restaurant or fallback to "N/A"
+      newRow.appendChild(distanceCell);
+      // Append the row to the table body
+      timeBody.appendChild(newRow);
+    });
+
     let price = restaurant.price
     let rating  = restaurant.rating
     let location = restaurant.location 
@@ -138,7 +163,6 @@ socket.on('startVoting', (data) => {
     let phoneElement = document.createElement("h2")
     phoneElement.textContent = "Phone: " + phone
 
-  
     let pictureElement = document.createElement('img');
     pictureElement.src = restaurant.picture;
     pictureElement.alt = restaurant.name;
@@ -224,6 +248,18 @@ socket.on('votingResults', (data) => {
   resultsSection.appendChild(resultsList);
 });
 
+let rating_flag = false;
+let selectRating = document.getElementById("ratingSelect");
+document.getElementById("yesNoDropdown").addEventListener("change", function () {
+  const ratingField = document.getElementById("ratingField");
+  if (this.value === "yes") {
+    ratingField.style.display = "block";
+    rating_flag = true;
+  } else {
+    ratingField.style.display = "none";
+    rating_flag = false;
+  }
+});
 
 const preferencesSubmit = document.getElementById('preferences-submit');
 preferencesSubmit.addEventListener("click", (event) => {
@@ -233,8 +269,18 @@ preferencesSubmit.addEventListener("click", (event) => {
   let city     = document.getElementById("location");
   let radius   = document.getElementById("radius");
 
+  let realRadius = radius.value * 1609.34;
+  // hehe no negative allowed 
+  if (realRadius > 40000 || realRadius < 0) {
+    realRadius = 40000;
+  }
+  let ratingVal = -10;
+  if (rating_flag) {
+    ratingVal = selectRating.value;
+  }
+
   // Prevent form submission if the button is inside a form
-  const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${radius.value}&roomID=${roomId}`;
+  const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${realRadius}&roomID=${roomId}&rating=${ratingVal}`;
 
   fetch(url)
   .then((response) => {
@@ -298,8 +344,13 @@ function removeRow(arrIndex) {
 
 // Socket event to populate nominations for all users
 socket.on("nominations", (data) => {
-  businesses = data.resturantData;
+  businesses = data.restaurants;
+  let leaderLocation = data.leaderLocation;
+  let mapDiv = document.getElementById("map");
   business = [];
+  const middleColumn = document.getElementById("middleColumn");
+  map.setCenter({ lat: leaderLocation.lat, lng: leaderLocation.lon });
+  mapDiv.style.display = "block";
   const restaurantTable = document.getElementById("restaurantTable");
 
   businesses.forEach((item) => {
@@ -310,6 +361,12 @@ socket.on("nominations", (data) => {
       item.location,
       item.phone
     ]);
+
+    const mark = {
+      position: { lat: item.coordinates.latitude, lng: item.coordinates.longitude },
+      title: item.name,
+    };
+    item.marker = addMarker(mark, map);
   });
 
   restaurantTable.innerHTML = `
@@ -328,6 +385,7 @@ socket.on("nominations", (data) => {
           <th>Rating</th>
           <th>Address</th>
           <th>Phone Number</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -336,6 +394,8 @@ socket.on("nominations", (data) => {
 
   renderTable();
   initAutocomplete();
+
+  addCustomMarker({ position: { lat: leaderLocation.lat, lng: leaderLocation.lon }, title: "Leader" }, map);
 });
 
 
@@ -369,14 +429,43 @@ const fillInAddress = () => {
   }
   console.log(place);
 
-  const rowData = {name: place.name, 
-                   price: priceMapping[place.price_level], 
-                   rating: place.rating, 
-                   location: place.formatted_address,
-                   phone: place.formatted_phone_number,
-                   picture: place.photos[0]};
-  socket.emit("addRestaurant", { restaurant : rowData })
+  const rowData = {
+    name: place.name,
+    price: priceMapping[place.price_level],
+    rating: place.rating,
+    location: place.formatted_address,
+    phone: place.formatted_phone_number,
+    picture: place.photos[0],
+    coordinates: { latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng() },
+    menu: ""
+  };
+  socket.emit("addRestaurant", { restaurant: rowData });
+  address1Field = document.getElementById("res-address").value = "";
 };
+
+socket.on('changedRestaurant', (data) => {
+  businesses.map((restaurant) => {
+    removeMarker(restaurant.marker);
+  });
+  businesses = data.restaurants;
+  newbusiness = []
+  businesses.map((restaurant) => {
+    singleitem = [restaurant.name,
+    restaurant.price,
+    restaurant.rating,
+    restaurant.location,
+    restaurant.phone,
+    ];
+    newbusiness.push(singleitem)
+    const mark = {
+      position: { lat: restaurant.coordinates.latitude, lng: restaurant.coordinates.longitude },
+      title: restaurant.name,
+    };
+    restaurant.marker = addMarker(mark, map);
+  })
+  business = newbusiness;
+  renderTable();
+});
 
 async function loadGoogleMaps() {
   try {
@@ -385,13 +474,82 @@ async function loadGoogleMaps() {
     const apiKey = data.key;
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initAutocomplete`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=initialize`;
     script.async = true;
     script.defer = true;
     document.body.appendChild(script);
   } catch (error) {
     console.error("Error loading Google Maps API:", error);
   }
+}
+
+async function initMap() {
+  const { Map } = await google.maps.importLibrary("maps");
+  const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+  const map = new Map(document.getElementById("map"), {
+    center: { lat: 39.9526, lng: 75.16522 },
+    zoom: 12,
+    mapId: "6747d039df5a2bde",
+  });
+  return map; // Return the map instance for further use
+}
+
+function addMarker(coord, map) {
+  /*const pinGlyphYellow1 = new PinElement({
+
+    background: "#FFFD55",
+
+    borderColor: "#FFFD55"
+
+  });*/
+  const marker = new google.maps.marker.AdvancedMarkerElement({
+    map: map,
+    position: coord.position,
+    //content: pinGlyphYellow1
+  });
+
+  const infoWindow = new google.maps.InfoWindow({
+    content: coord.title,
+  });
+
+  marker.element.addEventListener("click", function () {
+    infoWindow.open(map, marker);
+  });
+  return marker;
+}
+function addCustomMarker(coord, map) {
+  // Create a PinElement
+  const pinGreen = new google.maps.marker.PinElement({
+    background: "#006400", // Green background
+    glyphColor: "#FFFFFF", // White center (glyph color)
+    borderColor: "#000000" // Black border
+  });
+  // Create an AdvancedMarkerElement
+  const marker = new google.maps.marker.AdvancedMarkerElement({
+    map: map,
+    position: coord.position, // Ensure this is { lat, lng }
+    content: pinGreen.element, // Use the DOM element
+  });
+
+  // Create an InfoWindow
+  const infoWindow = new google.maps.InfoWindow({
+    content: coord.title,
+  });
+  // Add click event to open InfoWindow
+  marker.element.addEventListener("click", function () {
+    infoWindow.setPosition(coord.position); // Set the position explicitly
+    infoWindow.open(map);
+  });
+}
+
+function removeMarker(marker) {
+  marker.setMap(null);
+}
+
+async function initialize() {
+  // Call both initializers within the single callback
+  map = await (initMap());
+  initAutocomplete();
 }
 
 loadGoogleMaps();
