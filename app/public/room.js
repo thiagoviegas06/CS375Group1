@@ -4,6 +4,12 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 function detectPageRefresh() {
   let navigationType;
 
@@ -158,8 +164,8 @@ socket.on('startVoting', (data) => {
     });
 
     let price = restaurant.price
-    let rating  = restaurant.rating
-    let location = restaurant.location 
+    let rating = restaurant.rating
+    let location = restaurant.location
     let phone = restaurant.phone
     let menuLink = restaurant.menu
     console.log(menuLink)
@@ -254,7 +260,6 @@ socket.on('votingResults', (data) => {
   resultsSection.innerHTML = '<h2>Voting Results</h2>';
 
   let resultsList = document.createElement('ul');
-
   for (const restaurant of Object.values(results)) {
     let listItem = document.createElement('li');
     countMaxScore += restaurant.score === maxScore ? 1 : 0;
@@ -262,7 +267,6 @@ socket.on('votingResults', (data) => {
     listItem.style.color = "#141619";
     resultsList.appendChild(listItem);
   }
-
   resultsSection.appendChild(resultsList);
   if (isFinished) {
     const title = document.createElement("h2");
@@ -311,10 +315,10 @@ document.getElementById("yesNoDropdown").addEventListener("change", function () 
 const preferencesSubmit = document.getElementById('preferences-submit');
 preferencesSubmit.addEventListener("click", (event) => {
   event.preventDefault();
-  let cuisine  = document.getElementById("cuisine");
-  let price    = document.getElementById("price");
-  let city     = document.getElementById("location");
-  let radius   = document.getElementById("radius");
+  let cuisine = document.getElementById("cuisine");
+  let price = document.getElementById("price");
+  let city = document.getElementById("location");
+  let radius = document.getElementById("radius");
 
   let realRadius = radius.value * 1609.34;
   // hehe no negative allowed 
@@ -330,19 +334,19 @@ preferencesSubmit.addEventListener("click", (event) => {
   const url = `/sendYelp?cuisine=${cuisine.value}&price=${price.value}&city=${city.value}&radius=${realRadius}&roomID=${roomId}&rating=${ratingVal}`;
 
   fetch(url)
-  .then((response) => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    return response.json();
-  })
-  .then((data) => {
-    preferencesDiv.style.display = 'none';
-  })
-  .catch((error) => {
-    console.error("Error fetching Yelp data:", error.message);
-  });
+      return response.json();
+    })
+    .then((data) => {
+      preferencesDiv.style.display = 'none';
+    })
+    .catch((error) => {
+      console.error("Error fetching Yelp data:", error.message);
+    });
 });
 
 
@@ -386,7 +390,7 @@ const renderTable = () => {
 
 function removeRow(arrIndex) {
   const name = business[arrIndex][0];
-  socket.emit("deleteRestaurant", { restaurant : name })
+  socket.emit("deleteRestaurant", { restaurant: name })
 };
 
 // Socket event to populate nominations for all users
@@ -458,9 +462,9 @@ const priceMapping = {
 const initAutocomplete = () => {
   address1Field = document.getElementById("res-address")
   const googleMapAutoOption = {
-      componentRestrictions: { country: ["us"] },
-      fields: ["name", "formatted_address", "geometry", "rating", "price_level", "formatted_phone_number", "photos"],
-      types: ["restaurant", "cafe"],
+    componentRestrictions: { country: ["us"] },
+    fields: ["name", "formatted_address", "geometry", "rating", "price_level", "formatted_phone_number", "photos"],
+    types: ["restaurant", "cafe"],
   };
   autocomplete = new google.maps.places.Autocomplete(address1Field, googleMapAutoOption);
   address1Field.focus();
@@ -470,11 +474,9 @@ const initAutocomplete = () => {
 const fillInAddress = () => {
   const place = autocomplete.getPlace();
   if (!place.geometry) {
-      console.error("No geometry available for this place.");
-      return;
+    console.error("No geometry available for this place.");
+    return;
   }
-  console.log(place);
-
   const rowData = {
     name: place.name,
     price: priceMapping[place.price_level],
