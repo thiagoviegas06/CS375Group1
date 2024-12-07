@@ -7,24 +7,29 @@
     <title>Demo</title>
 </head>
 <body>
-    <div class="login-container">
-        <button class="button" id="myprofile">My Profile</button> <br>
-        <button class="button" id="send">Create chatroom</button> <br>
-        <button class="button" id="join">Join chatroom</button> <br>
-        <button class="button" id="logout">Log out</button>
-    </div>  
+    <h1 class="center header">helpyourgirlfriendpickarestaurant.com</h1> 
+    <div class="center">
+        <div class="background-card">
+            <button class="button" id="myprofile">My Profile</button> <br>
+            <button class="button" id="send">Create New Room</button> <br>
+            <button class="button" id="join">Join Existing Room</button> <br>
+            <button class="button" id="logout">Log out</button>
+        </div>  
+    </div>
     <div id="ids"></div>
     <div id="backdrop"></div>
 
     <!-- Modal -->
     <div id="popupModal">
         <h2>Would you like to share your location?</h2>
+        <br>
         <p>Sharing your location helps us improve your user experience</p>
+        <br>
         <button id="yes">Yes</button>
         <button id="no">No</button>
         <div id="hide" style="display: none;">
             <input type="text" id="res-address" placeholder="Type your desired location" />
-            <button type="submit" id="submit">Submit</button>
+            <button type="submit" id="submit" style="justify-content: center;">Submit</button>
 
         </div>
     </div>
@@ -104,7 +109,7 @@
         })
 
         noButton.addEventListener("click", () => {
-            initAutocomplete(address1Field, userLocation); // Call directly
+            //initAutocomplete(address1Field, userLocation); // Call directly
             let hideDiv = document.getElementById("hide");
             hideDiv.style.display = "block";
         });
@@ -119,7 +124,7 @@
         })
     </script>
      <script
-        src="https://maps.googleapis.com/maps/api/js?key=&libraries=places&v=weekly&callback=initAutocomplete"
+        src="https://maps.googleapis.com/maps/api/js?key={google_key}&libraries=places&v=weekly&callback=initAutocomplete"
         defer async>
      </script>
 </body>

@@ -847,10 +847,11 @@ function getRestaurantsForVote(roomId) {
       rating: details.yelp.rating,
       location: details.yelp.location.display_address.join(", "),
       phone: details.yelp.phone,
-      picture: "https://uploads.dailydot.com/2024/07/side-eye-cat.jpg?q=65&auto=format&w=1600&ar=2:1&fit=crop", // Adding a static picture
+      picture: "https://st4.depositphotos.com/14953852/24787/v/450/depositphotos_247872612-stock-illustration-no-image-available-icon-vector.jpg", // Adding a static picture
       coordinates: details.yelp.coordinates,
       menu: details.yelp.attributes.menu_url,
     });
+    console.log("MENU: " + details.yelp.attributes.menu_url)
   });
 
   return restaurants;

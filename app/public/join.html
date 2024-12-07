@@ -8,17 +8,19 @@
 </head>
 <body>
   <!-- This will conditionally appear if the user is logged in or not -->
-    <div class="login-container">
-    <label for="name">User Name:</label>
-    <input type="text" id="userId" name="userId"><br><br>
-    <label for="roomId">Room Code:</label>
-    <input type="text" id="roomId" name="roomId"><br><br>
-    <p>Would you like to provide your current location? </p>
-    <button onclick="getLocation()">Yes</button>
-    <button id="no">No</button>
-    <div id = "inputField"></div>
-    <button class="button" id="join">Join chatroom</button>
-  </div>
+  <div class="center">
+    <div class="background-card">
+      <label for="name">User Name:</label>
+      <input type="text" id="userId" name="userId"><br><br>
+      <label for="roomId">Room Code:</label>
+      <input type="text" id="roomId" name="roomId"><br><br>
+      <p>Would you like to provide your current location? </p>
+      <button class="button-choice" onclick="getLocation()">Yes</button>
+      <button class="button-choice" id="no" style="background-color: #2C2E3A;">No</button>
+      <div id = "inputField"></div>
+      <button class="button" id="join">Join chatroom</button>
+    </div>
+  </div>  
   <div id = "error"></div>
   <script>
     let joinButton = document.getElementById("join");

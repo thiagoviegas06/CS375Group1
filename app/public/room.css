@@ -1,4 +1,16 @@
-/* General Reset */
+:root {
+  --primary-color: #0A21C0;          /* Blue */
+  --primary-color-hover: #081CA1;    /* Darker Blue */
+  --secondary-color: #2C2E3A;        /* Green */
+  --secondary-color-hover: #444757;  /* Darker Green */
+  --background-color: rgba(255, 255, 255, .5);;       /* Light Grey */
+  --text-color: #141619;             /* Dark Grey */
+  --error-color: #e74c3c; 
+  --accent-color: #050A44; 
+  --accent-color-hover: #070e61;
+  --primary-button-color: #2C2E3A; 
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,8 +19,8 @@
   
   body {
     font-family: 'Arial', sans-serif;
-    background-color: #121212;  /* Dark background for the page */
-    color: #e0e0e0;  /* Light text color for better readability */
+    background: linear-gradient(to left, var(--primary-color), var(--accent-color));
+    color: #e0e0e0;  
     line-height: 1.6;
     display: flex;
     flex-direction: column;
@@ -17,53 +29,61 @@
     gap: 20px;
     max-width: 2000px;
     margin: 0 auto;
+    font-size: 20px;
   }
-  
-  /* CSS Variable for the Primary Button Color */
-  :root {
-    --primary-button-color: #ED213A;  /* Red color for the primary button */
+
+  form{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
   
   /* Layout Container (Flexbox for 3 columns) */
   .container {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 24% 50% 24%; /* 3 equal columns */
+    grid-template-rows: 1fr 1fr; /* 2 rows of equal height */
+    grid-template-areas: 
+      "chatRoom middleColumn rightColumn"
+      "chatRoom middleColumn map";
     gap: 20px;
-    flex-wrap: wrap;
     margin-bottom: 20px;
+    color: var(--text-color);
   }
   
   /* Left Column (Chat Room) */
   #chatRoom {
-    width: 30%;
-    background-color: #1e1e1e;  /* Dark background for the chat room */
+    grid-area: chatRoom;  /* Assign to grid area 'chatRoom' */
+    background-color: var(--background-color);
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    min-height: 75vh;
     display: flex;
     flex-direction: column;
-    height: 400px;
+    gap: 10px;
   }
   
   #messages {
     flex-grow: 1;
     overflow-y: auto;
-    max-height: 300px;
     margin-bottom: 15px;
     word-wrap: break-word;
     word-break: break-word;
     padding: 10px;
-    background-color: #2a2a2a;  /* Dark background for the message area */
-    color: #e0e0e0;  /* Light text color for messages */
+    background-color: rgba(255, 255, 255, .5);  /* Dark background for the message area */
+    color: var(--text-color);  /* Light text color for messages */
     border-radius: 5px;
   }
   
   #messages div:nth-child(even) {
-    background-color: #333333; /* Slightly lighter gray for even messages */
+    background-color: rgba(255, 255, 255, .5); 
+    padding: 5px;/* Slightly lighter gray for even messages */
+    border-radius: 5px;
   }
   
   #messages div:nth-child(odd) {
-    background-color: #444444; /* Slightly darker gray for odd messages */
+    background-color: rgba(255, 255, 255, 1);
+    padding: 5px; /* Slightly darker gray for odd messages */
+    border-radius: 5px;
   }
   
   #input {
@@ -73,18 +93,19 @@
     border-radius: 5px;
     font-size: 16px;
     margin-bottom: 10px;
-    background-color: #333333;  /* Dark background for input */
-    color: #e0e0e0;  /* Light text color */
+    background-color: rgba(255, 255, 255, .5);  /* Dark background for input */
+    color: var(--text-color);  /* Light text color */
   }
   
   #input:focus {
-    border-color: #007bff;
+    border-color: var(--primary-color);
+    border: 1px;
     outline: none;
   }
   
   /* Primary Button Styling */
   button {
-    background-color: var(--primary-button-color);  /* Use the CSS variable */
+    background-color: var(--primary-color);  /* Use the CSS variable */
     color: #fff;
     padding: 10px 15px;
     border: none;
@@ -95,7 +116,7 @@
   }
   
   button:hover {
-    background-color: #C81A2E;  /* Darker red on hover */
+    background-color: var(--primary-color-hover);  /* Darker red on hover */
   }
   
   button:disabled {
@@ -105,37 +126,39 @@
   
   /* Middle Column */
   #middleColumn {
-    width: 40%;
-    background-color: #1e1e1e;
+    grid-area: middleColumn;  /* Assign to grid area 'middleColumn' */
+    background-color: var(--background-color);
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    overflow-x: auto;
-  }
-  
-  .middleContent {
-    width: 100%;
-    height: 100%;
-    background-color: #333333;
-    border-radius: 8px;
+    min-height: 75vh;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #fff;
-    font-size: 24px;
-    text-align: center;
+    flex-direction: column;
+    gap: 10px;
   }
-  
+
+  /* Right Column - Top Section */
   #rightColumn {
-    width: 25%;
-    background-color: #1e1e1e;
+    grid-area: rightColumn;  /* Assign to grid area 'rightColumn' */
+    background-color: var(--background-color);
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     overflow-y: auto;
-    max-height: 400px;
+    max-height: 34vh; /* Limit height for right column */
   }
-  
+
+/* Map - Bottom Section */
+  #map {
+    grid-area: map;  /* Assign to grid area 'map' */
+    min-width: 100%;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    max-height: 34vh; /* Limit height for map section */
+    overflow: hidden;
+  }
+
   #rightColumn ul {
     list-style: none;
   }
@@ -150,33 +173,28 @@
     border-bottom: none;
   }
   
-  #rightColumn .leader {
-    font-weight: bold;
-    color: #007bff;  /* Highlight the leader in blue */
-  }
-  
   /* Voting Button - Centered Below the Middle Column */
   #votingButton {
     width: 100%;
     display: flex;
     justify-content: center;
-    margin-top: 20px;
+    margin-top: 0px;
   }
   
   #votingButton button {
     width: 200px;
     padding: 15px;
     font-size: 18px;
-    background-color: var(--primary-button-color);  /* Use the CSS variable */
+    background-color: var(--primary-color);  /* Use the CSS variable */
     color: white;
-    border: none;
+    border: 10px solid var(--background-color);
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
   }
   
   #votingButton button:hover {
-    background-color: #c0392b;  /* Darker red on hover */
+    background-color: var(--primary-color-hover);  /* Darker red on hover */
   }
   
   #votingButton button:disabled {
@@ -207,6 +225,9 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  max-height: 425px;
+  overflow-y:scroll;
+  display:block;
 }
 
 thead th {
@@ -248,3 +269,15 @@ button.delete-button {
 button.delete-button:hover {
   background-color: #c0392b;
 }
+
+#usersList{
+  color: var(--text-color);
+  overflow-y:scroll;
+  overflow: hidden;
+  max-height: 200px;
+}
+
+li{
+  color: var(--text-color);
+}
+

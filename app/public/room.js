@@ -1,3 +1,9 @@
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 function detectPageRefresh() {
   let navigationType;
 
@@ -17,7 +23,7 @@ function detectPageRefresh() {
     window.location.href = '/';
   }
 }
-detectPageRefresh();
+//detectPageRefresh();
 
 window.addEventListener('beforeunload', () => {
   socket.disconnect();
@@ -73,8 +79,8 @@ socket.on('updateUserList', (userList) => {
   userList.forEach(user => {
     let listItem = document.createElement('li');
     listItem.textContent = user.username + (user.isPartyLeader ? ' (Leader)' : '');
+    listItem.style.color = "#141619"
     usersList.appendChild(listItem);
-
     if (user.isPartyLeader && user.username === clientUsername) {
       startVoteButton.style.display = 'inline-block';
       preferencesDiv.style.display = 'inline-block';
@@ -95,6 +101,11 @@ socket.on('startVoting', (data) => {
   let drivingTable = document.getElementById("drivingTable")
   drivingTable.style.display = "block"
   usersList.style.display = "none"
+  let restaurantTable = document.getElementById("restaurantTable")
+  restaurantTable.style.display = "none"
+  let rightColumnHeader = document.getElementById("rightColumnHeader")
+  rightColumnHeader.style.display = "none"
+  startVoteButton.style.display = "none"
 
   function displayRestaurant(index) {
     socket.emit("submitCurrentVotes", { votes: userVotes })
@@ -150,24 +161,29 @@ socket.on('startVoting', (data) => {
     let rating  = restaurant.rating
     let location = restaurant.location 
     let phone = restaurant.phone
+    let menuLink = restaurant.menu
+    console.log(menuLink)
 
-    let priceElement = document.createElement("h2")
+    let priceElement = document.createElement("h4")
     priceElement.textContent = "Price: " + price
 
-    let ratingElement = document.createElement("h2")
+    let ratingElement = document.createElement("h4")
     ratingElement.textContent = "Rating: " + rating
 
-    let locationElement = document.createElement("h2")
+    let locationElement = document.createElement("h4")
     locationElement.textContent = "Location: " + location
 
-    let phoneElement = document.createElement("h2")
+    let phoneElement = document.createElement("h4")
     phoneElement.textContent = "Phone: " + phone
+
+    let menuLinkElement = document.createElement("h4")
+    menuLinkElement.textContent = "Link to the Menu: " + menuLink
 
     let pictureElement = document.createElement('img');
     pictureElement.src = restaurant.picture;
     pictureElement.alt = restaurant.name;
-    pictureElement.style.maxWidth = '400px';
-    pictureElement.style.height = 'auto';
+    pictureElement.style.maxWidth = '200px';
+    pictureElement.style.maxHeight = '200px';
     const sliderDiv = document.createElement('div');
     sliderDiv.setAttribute("class", "slider_container");
     const mySlider = document.createElement('input');
@@ -179,11 +195,8 @@ socket.on('startVoting', (data) => {
     mySlider.setAttribute("id", "myRange");
     sliderDiv.appendChild(mySlider);
     const textTemplate = document.createElement("h2");
-    textTemplate.textContent = "Score: ";
-    const sliderInfo = document.createElement("h3");
-    sliderInfo.textContent = parseInt(mySlider.value);
+    textTemplate.textContent = "Score: " + parseInt(mySlider.value);
     sliderDiv.appendChild(textTemplate);
-    sliderDiv.appendChild(sliderInfo);
 
     mySlider.addEventListener("change", (event) => {
       sliderInfo.textContent = mySlider.value;
@@ -216,14 +229,11 @@ socket.on('startVoting', (data) => {
     restaurantDiv.appendChild(pictureElement);
     restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(sliderDiv);
-    restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(priceElement);
-    restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(ratingElement);
-    restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(locationElement);
-    restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(phoneElement);
+    restaurantDiv.appendChild(menuLinkElement)
     restaurantDiv.appendChild(document.createElement("br"));
     restaurantDiv.appendChild(yesButton);
     votingSection.appendChild(restaurantDiv);
@@ -233,7 +243,10 @@ socket.on('startVoting', (data) => {
 });
 
 socket.on('votingResults', (data) => {
-  const results = data.results;
+  const isFinished = data.done;
+  const results = data.results.sort((a, b) => a.score > b.score);
+  let countMaxScore = 0;
+  const maxScore = results[0].score;
   let resultsSection = document.getElementById('votingResults');
   resultsSection.innerHTML = '<h2>Voting Results</h2>';
 
@@ -241,11 +254,42 @@ socket.on('votingResults', (data) => {
 
   for (const restaurant of Object.values(results)) {
     let listItem = document.createElement('li');
+    countMaxScore += restaurant.score === maxScore ? 1 : 0;
     listItem.textContent = `${restaurant.name}: ${restaurant.score}`;
+    listItem.style.color = "#141619";
     resultsList.appendChild(listItem);
   }
 
   resultsSection.appendChild(resultsList);
+  if (isFinished) {
+    const title = document.createElement("h2");
+    const finalList = document.createElement("ul");
+    const listItemPlaceholder = [];
+    title.textContent = "Winner: ";
+    for (let i = 0 ; i < countMaxScore ; i++){
+      const listItem = document.createElement("li");
+      listItem.textContent = `${results[i].name}: ${results[i].score}`;
+      listItemPlaceholder.push(listItem);
+      finalList.appendChild(listItem);
+    }
+    resultsSection.appendChild(title);
+    resultsSection.appendChild(finalList);
+    if (countMaxScore > 1){
+      const tieBreaker = document.createElement("button");
+      tieBreaker.textContent = "Break the tie!";
+      tieBreaker.addEventListener("click", () => {
+        const winner = getRandomInt(0, countMaxScore - 1);
+        for (let i = 0 ; i < countMaxScore ; i++){
+          if (i === winner){
+            continue;
+          }
+          listItemPlaceholder[i].setAttribute("style", "display:none;");
+        }
+        tieBreaker.setAttribute("style", "display:none");
+      });
+      resultsSection.appendChild(tieBreaker);
+    }
+  }
 });
 
 let rating_flag = false;
@@ -371,10 +415,9 @@ socket.on("nominations", (data) => {
 
   restaurantTable.innerHTML = `
     <h2>Nominations</h2>
-    <h3>Nominate a Restaurant</h3>
+    <h3>Add a New Restaurant to vote on</h3>
     <form id="restaurant-form">
       <input type="text" id="res-address" placeholder="Type restaurant address" />
-      <button type="submit">Add Restaurant</button>
     </form>
     <table>
       <thead>
@@ -435,7 +478,7 @@ const fillInAddress = () => {
     rating: place.rating,
     location: place.formatted_address,
     phone: place.formatted_phone_number,
-    picture: place.photos[0],
+    picture: place.photos ? place.photos[0]?.getUrl() : "https://st4.depositphotos.com/14953852/24787/v/450/depositphotos_247872612-stock-illustration-no-image-available-icon-vector.jpg",
     coordinates: { latitude: place.geometry.location.lat(), longitude: place.geometry.location.lng() },
     menu: ""
   };
