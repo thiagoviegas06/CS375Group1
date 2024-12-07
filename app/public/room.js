@@ -195,8 +195,11 @@ socket.on('startVoting', (data) => {
     mySlider.setAttribute("id", "myRange");
     sliderDiv.appendChild(mySlider);
     const textTemplate = document.createElement("h2");
-    textTemplate.textContent = "Score: " + parseInt(mySlider.value);
+    textTemplate.textContent = "Score: "
+    const sliderInfo = document.createElement("h3");
+    sliderInfo.textContent = parseInt(mySlider.value)
     sliderDiv.appendChild(textTemplate);
+    sliderDiv.append(sliderInfo)
 
     mySlider.addEventListener("change", (event) => {
       sliderInfo.textContent = mySlider.value;
