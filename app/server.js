@@ -245,7 +245,7 @@ function sendYelp(pref, roomID) {
   return new Promise((resolve, reject) => {
     const options = {
       method: 'GET',
-      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=1&categories=${pref.cuisine}`,
+      url: `https://api.yelp.com/v3/businesses/search?location=${pref.city}&price=${pref.price}&radius=${pref.radius}&limit=10&categories=${pref.cuisine}`,
       headers: {
         accept: 'application/json',
         Authorization: `Bearer ${yelpKey}`,
@@ -275,7 +275,6 @@ function sendYelp(pref, roomID) {
           let googleAlias = alias.replace(/-/g, "&");
           let bus_rating = business.rating;
 
-
           if (bus_rating > rating) {
             //console.log(business);
             restaurantData[name] = {
@@ -290,7 +289,7 @@ function sendYelp(pref, roomID) {
                 // Default to an empty object if undefined
               },
               alias: googleAlias,
-              photos: [], // Placeholder for Google photo references
+              photos: [business.image_url], // Placeholder for Google photo references
             };
 
           }
@@ -407,7 +406,7 @@ app.get("/preferences-api", (req, res) => {
 
   const options = {
     method: 'GET',
-    url: `https://api.yelp.com/v3/businesses/search?location=${city}&price=${price}&limit=1&categories=${cuisine}`,
+    url: `https://api.yelp.com/v3/businesses/search?location=${city}&price=${price}&limit=10&categories=${cuisine}`,
     headers: {
       accept: 'application/json',
       Authorization: `Bearer ${yelpKey}`
@@ -846,7 +845,7 @@ function getRestaurantsForVote(roomId) {
       rating: details.yelp.rating,
       location: details.yelp.location.display_address.join(", "),
       phone: details.yelp.phone,
-      picture: "https://st4.depositphotos.com/14953852/24787/v/450/depositphotos_247872612-stock-illustration-no-image-available-icon-vector.jpg", // Adding a static picture
+      picture: details.photos[0], // Adding a static picture
       coordinates: details.yelp.coordinates,
       menu: details.yelp.attributes.menu_url,
     });

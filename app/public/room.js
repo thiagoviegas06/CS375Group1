@@ -77,6 +77,14 @@ fetch('/get-username')
 let pathParts = window.location.pathname.split("/");
 let roomId = pathParts[pathParts.length - 1];
 
+let roomURL = `/getRoomObj/?id=${roomId}`;
+let roomObj = {};
+console.log(roomId); 
+let code = document.getElementById("roomCode");
+let roomNumber = document.createElement("h2");
+roomNumber.textContent = `Share your room code: ${roomId}`;
+code.appendChild(roomNumber);
+
 socket.emit('joinRoom', { "roomId": roomId });
 
 socket.on('updateUserList', (userList) => {
@@ -98,9 +106,11 @@ startVoteButton.addEventListener("click", () => {
   socket.emit("startVoting", { roomId: roomId });
 });
 
+var restaurants = []
+
 socket.on('startVoting', (data) => {
   const drivingTime = data.times;
-  const restaurants = data.restaurants;
+  restaurants = data.restaurants;
   let currentIndex = 0;
   let userVotes = {};
   let submittedVote = false;
@@ -117,6 +127,7 @@ socket.on('startVoting', (data) => {
     socket.emit("submitCurrentVotes", { votes: userVotes })
     if (index >= restaurants.length && !submittedVote) {
       socket.emit('submitVotes', { votes: userVotes });
+      drivingTable.style.display = "none";
       document.getElementById('votingSection').innerHTML = "<p>Voting completed. Thank you!</p>";
       submittedVote = true;
       return;
@@ -258,6 +269,7 @@ socket.on('votingResults', (data) => {
   const maxScore = results[0].score;
   let resultsSection = document.getElementById('votingResults');
   resultsSection.innerHTML = '<h2>Voting Results</h2>';
+  let doneSection = document.getElementById('votingDone');
 
   let resultsList = document.createElement('ul');
   for (const restaurant of Object.values(results)) {
@@ -267,37 +279,112 @@ socket.on('votingResults', (data) => {
     listItem.style.color = "#141619";
     resultsList.appendChild(listItem);
   }
+
+
   resultsSection.appendChild(resultsList);
   if (isFinished) {
-    const title = document.createElement("h2");
     const finalList = document.createElement("ul");
     const listItemPlaceholder = [];
-    title.textContent = "Winner: ";
+
+    const title = document.createElement('h2');
+    const text = "Winner";
+
+    for (let char of text) {
+      const span = document.createElement('span');
+      span.textContent = char;
+      title.appendChild(span);
+    }
     for (let i = 0 ; i < countMaxScore ; i++){
       const listItem = document.createElement("li");
       listItem.textContent = `${results[i].name}: ${results[i].score}`;
       listItemPlaceholder.push(listItem);
       finalList.appendChild(listItem);
     }
-    resultsSection.appendChild(title);
-    resultsSection.appendChild(finalList);
+    doneSection.appendChild(title);
+    doneSection.appendChild(finalList);
     if (countMaxScore > 1){
       const tieBreaker = document.createElement("button");
       tieBreaker.textContent = "Break the tie!";
       tieBreaker.addEventListener("click", () => {
-        const winner = getRandomInt(0, countMaxScore - 1);
+        const winner = ((1779033703 * 8675309 * 3144134277 * countMaxScore) % countMaxScore); //not random lol
         for (let i = 0 ; i < countMaxScore ; i++){
           if (i === winner){
+            for (let j = 0; j < restaurants.length; ++j) {
+              if (restaurants[j].name === results[i].name) {
+                displayRestaurantWin(j);
+              }
+            }
             continue;
           }
           listItemPlaceholder[i].setAttribute("style", "display:none;");
         }
         tieBreaker.setAttribute("style", "display:none");
       });
-      resultsSection.appendChild(tieBreaker);
+      doneSection.appendChild(tieBreaker);
+    } else {
+      for (let i = 0; i < restaurants.length; ++i) {
+        if (restaurants[i].name === results[0].name) {
+          displayRestaurantWin(i);
+        }
+      }
     }
   }
 });
+
+function displayRestaurantWin(index) {
+  const restaurant = restaurants[index];
+  let restaurantDiv = document.createElement('div');
+  let nameElement = document.createElement('h2');
+  nameElement.textContent = restaurant.name;
+
+  let curRest = restaurant.name;
+  const timeBody = document.getElementById("bodyDistance");
+
+  while (timeBody.firstChild) {
+    timeBody.removeChild(timeBody.firstChild);
+  }
+
+    let price = restaurant.price
+    let rating = restaurant.rating
+    let location = restaurant.location
+    let phone = restaurant.phone
+    let menuLink = restaurant.menu
+
+    let priceElement = document.createElement("h4")
+    priceElement.textContent = "Price: " + price
+
+    let ratingElement = document.createElement("h4")
+    ratingElement.textContent = "Rating: " + rating
+
+    let locationElement = document.createElement("h4")
+    locationElement.textContent = "Location: " + location
+
+    let phoneElement = document.createElement("h4")
+    phoneElement.textContent = "Phone: " + phone
+
+    let menuLinkElement = document.createElement("h4")
+    menuLinkElement.textContent = "Link to the Menu: " + menuLink
+
+    let pictureElement = document.createElement('img');
+    pictureElement.src = restaurant.picture;
+    pictureElement.alt = restaurant.name;
+    pictureElement.style.maxWidth = '200px';
+    pictureElement.style.maxHeight = '200px';
+    const sliderDiv = document.createElement('div');
+    sliderDiv.setAttribute("class", "slider_container");
+
+    restaurantDiv.appendChild(pictureElement);
+    restaurantDiv.appendChild(document.createElement("br"));
+    restaurantDiv.appendChild(sliderDiv);
+    restaurantDiv.appendChild(priceElement);
+    restaurantDiv.appendChild(ratingElement);
+    restaurantDiv.appendChild(locationElement);
+    restaurantDiv.appendChild(phoneElement);
+    restaurantDiv.appendChild(menuLinkElement)
+    restaurantDiv.appendChild(document.createElement("br"));
+    winSection = document.getElementById("winSection");
+    winSection.appendChild(restaurantDiv);
+}
 
 let rating_flag = false;
 let selectRating = document.getElementById("ratingSelect");
@@ -477,6 +564,7 @@ const fillInAddress = () => {
     console.error("No geometry available for this place.");
     return;
   }
+
   const rowData = {
     name: place.name,
     price: priceMapping[place.price_level],
