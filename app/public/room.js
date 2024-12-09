@@ -532,7 +532,18 @@ socket.on("nominations", (data) => {
   renderTable();
   initAutocomplete();
 
+  let userLocations = data.userLocation;
   addCustomMarker({ position: { lat: leaderLocation.lat, lng: leaderLocation.lon }, title: "Leader" }, map);
+  console.log(userLocations);
+
+  for(a of userLocations){
+    let lat = a.lat;
+    let lon = a.lon;
+    let name = a.name;
+    addCustomMarker({ position: { lat: lat, lng: lon }, title: name }, map);
+  }
+
+  
 });
 
 

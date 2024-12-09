@@ -144,9 +144,13 @@ app.post('/logout', (req, res) => {
 app.post('/guest-username', (req, res) => {
   const username = req.body.userData.name;
   // add UserLocation to room Obj
-  const userLocation = { lat: req.body.userData.lat, lon: req.body.userData.lon };
+
+  const userLocation = req.body.userData;
+  //console.log(userLocation);
   const roomID = req.body.id;
+  console.log("USERS"); 
   rooms[roomID].userLocations.push(userLocation);
+  console.log(rooms[roomID].userLocations);
   req.session.authenticated = true;
   req.session.guestname = username;
   req.session.save()
@@ -226,7 +230,8 @@ app.get('/sendYelp', async (req, res) => {
     rooms[roomID].restaurants = getRestaurantsForVote(roomID);
     let resturantData = rooms[roomID].restaurants;
     let leaderLoc = rooms[roomID].leaderLocation;
-    let userLocs = rooms[roomID].userLocation;
+    let userLocs = rooms[roomID].userLocations;
+    console.log(userLocs);
 
     for (let s of Object.values(rooms[roomID].sockets)) {
       s.emit('nominations', { restaurants: resturantData, leaderLocation: leaderLoc, userLocation: userLocs });
