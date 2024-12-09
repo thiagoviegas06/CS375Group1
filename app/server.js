@@ -748,13 +748,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('deleteRestaurant', (data) => {
-    const idx = data.idx;
+    //const idx = data.idx;
     const roomId = socket.roomId;
-    /*const name = data.restaurant;
-    const room = rooms[roomId];
-    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);*/
-    if (idx !== -1) {
-      rooms[roomId].restaurants.splice(idx, 1);
+    const name = data.restaurant;
+    //const room = rooms[roomId];
+    const index = rooms[roomId].restaurants.findIndex(obj => obj.name === name);
+    if (index !== -1) {
+      rooms[roomId].restaurants.splice(index, 1);
     }
     let restaurantData = rooms[roomId].restaurants;
     for (let s of Object.values(rooms[roomId].sockets)) {
